@@ -714,23 +714,24 @@
         var selectedPair = category.Pairs[random.Next(category.Pairs.Count)];
         currentGameWordPair = selectedPair;
 
-        // Create role distribution
+        // Create role distribution based on CURRENT number of players
+        var currentPlayerCount = players.Count;
         var roles = new List<string>();
         
         // Add civilians
-        for (int i = 0; i < GetCivilianCount(); i++)
+        for (int i = 0; i < GetCivilianCountForPlayerCount(currentPlayerCount); i++)
         {
             roles.Add(GameConstants.PlayerRoles.Civilian);
         }
         
         // Add undercover
-        for (int i = 0; i < GetUndercoverCount(); i++)
+        for (int i = 0; i < GetUndercoverCountForPlayerCount(currentPlayerCount); i++)
         {
             roles.Add(GameConstants.PlayerRoles.Undercover);
         }
         
         // Add Mr. White
-        for (int i = 0; i < GetMisterWhiteCount(); i++)
+        for (int i = 0; i < GetMisterWhiteCountForPlayerCount(currentPlayerCount); i++)
         {
             roles.Add(GameConstants.PlayerRoles.MrWhite);
         }
@@ -1056,10 +1057,26 @@
         await StartGame();
     }
 
-    // Helper methods
+    // Helper methods for original player count (used in setup UI)
     private int GetCivilianCount()
     {
-        return playerCount switch
+        return GetCivilianCountForPlayerCount(playerCount);
+    }
+
+    private int GetUndercoverCount()
+    {
+        return GetUndercoverCountForPlayerCount(playerCount);
+    }
+
+    private int GetMisterWhiteCount()
+    {
+        return GetMisterWhiteCountForPlayerCount(playerCount);
+    }
+
+    // Helper methods for specific player count (used for role assignment)
+    private int GetCivilianCountForPlayerCount(int count)
+    {
+        return count switch
         {
             3 => 2,  // 2 civilians, 1 undercover, 0 white
             4 => 2,  // 2 civilians, 1 undercover, 1 white
@@ -1069,13 +1086,13 @@
             8 => 4,  // 4 civilians, 2 undercover, 2 white
             9 => 5,  // 5 civilians, 2 undercover, 2 white
             10 => 5, // 5 civilians, 3 undercover, 2 white
-            _ => Math.Max(1, playerCount - GetUndercoverCount() - GetMisterWhiteCount())
+            _ => Math.Max(1, count - GetUndercoverCountForPlayerCount(count) - GetMisterWhiteCountForPlayerCount(count))
         };
     }
 
-    private int GetUndercoverCount()
+    private int GetUndercoverCountForPlayerCount(int count)
     {
-        return playerCount switch
+        return count switch
         {
             3 => 1,
             4 => 1,
@@ -1089,9 +1106,9 @@
         };
     }
 
-    private int GetMisterWhiteCount()
+    private int GetMisterWhiteCountForPlayerCount(int count)
     {
-        return playerCount switch
+        return count switch
         {
             3 => 0,
             4 => 1,
@@ -1101,7 +1118,7 @@
             8 => 2,
             9 => 2,
             10 => 2,
-            _ => playerCount >= 4 ? 1 : 0
+            _ => count >= 4 ? 1 : 0
         };
     }
 
