@@ -1,0 +1,56 @@
+@page "/game/lobby"
+@using RoamingRoutes.Shared.Models.Games
+@using RoamingRoutes.Client.Services
+@using Microsoft.AspNetCore.Components.Web
+@inject RoamingRoutes.Client.Services.ILocalGameService GameService
+@inject NavigationManager Navigation
+
+ 
+<div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8">
+    <div class="max-w-6xl mx-auto px-4">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">Rounds Game Lobby</h1>
+            <p class="text-gray-600">Create a new game or join an existing one!</p>
+            
+            <!-- Game Mode Selection -->
+            <div class="flex justify-center gap-4 mt-6">
+                <a href="/game/local" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors">
+                    📱 Local Game (Pass & Play)
+                </a>
+                <div class="bg-gray-100 text-gray-600 font-semibold py-2 px-6 rounded-lg">
+                    🌐 Online Multiplayer (Below)
+                </div>
+            </div>
+        </div>
+
+        <div class="max-w-2xl mx-auto">
+            <div class="bg-white rounded-xl shadow-lg p-8 text-center">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4">Local Play Only</h2>
+                <p class="text-gray-600 mb-6">This deployment is a static client (GitHub Pages). Online multiplayer (join/create across devices) requires a server and is not available here. Use Local Play (pass & play) or load a saved local session.</p>
+
+                <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                    <a class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-6 rounded-lg" href="/game/local">Start Local Game</a>
+                    <button @onclick="LoadSavedSession" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg">Load Saved Session</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private async Task LoadSavedSession()
+    {
+        // try to load any saved session from localStorage
+        await GameService.LoadFromLocalAsync();
+        if (GameService.CurrentGame is not null)
+        {
+            Navigation.NavigateTo($"/game/{GameService.CurrentGame.GameId}");
+        }
+        else
+        {
+            // no saved session; navigate to the local game setup
+            Navigation.NavigateTo("/game/local");
+        }
+    }
+}

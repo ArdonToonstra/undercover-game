@@ -1,0 +1,784 @@
+@page "/"
+@using RoamingRoutes.Shared.Models.Games
+@using RoamingRoutes.Client.Services
+@using Microsoft.AspNetCore.Components.Web
+@inject RoamingRoutes.Client.Services.ILocalGameService LocalGameService
+@inject RoamingRoutes.Client.Services.IWordPairClientService WordPairService
+
+@code {
+    // Simple local class for game results since GameResultDTO is not in the shared models
+    public class GameResultDTO
+    {
+        public string Winner { get; set; } = "";
+        public string Reason { get; set; } = "";
+    }
+}
+
+<div class="container">
+    
+    @if (gamePhase == GamePhase.Setup)
+    {
+        <!-- Game Setup -->
+        <div class="card">
+            <div class="card-header">
+                <h1>🎭 Undercover</h1>
+                <p style="color: var(--text-muted); text-align: center; margin: 0;">Pass the device around to play with friends!</p>
+            </div>
+            
+            <!-- Word Category Selection -->
+            <div class="form-group">
+                <label class="form-label">Word Category</label>
+                @if (wordCategories.Any())
+                {
+                    <select @bind="selectedCategoryName" class="form-control">
+                        @foreach (var category in wordCategories)
+                        {
+                            <option value="@category.Name">@category.Name</option>
+                        }
+                    </select>
+                    @if (!string.IsNullOrEmpty(selectedCategoryName))
+                    {
+                        var selectedCategory = wordCategories.FirstOrDefault(c => c.Name == selectedCategoryName);
+                        @if (selectedCategory != null)
+                        {
+                            <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem;">@selectedCategory.Description</p>
+                            <p style="color: var(--text-muted); font-size: 0.8rem;">@selectedCategory.Pairs.Count word pairs available</p>
+                        }
+                    }
+                }
+                else
+                {
+                    <div style="color: var(--text-muted); font-size: 0.9rem;">Loading word categories...</div>
+                }
+            </div>
+            
+            <!-- Player Count -->
+            <div class="form-group">
+                <label class="form-label">Number of Players: @playerCount</label>
+                <input type="range" min="3" max="10" @bind="playerCount" @oninput="OnPlayerCountChanged" class="form-control" style="height: 2rem;" />
+                <div style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 0.8rem; margin-top: 0.5rem;">
+                    <span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span>
+                </div>
+            </div>
+
+            <!-- Role Distribution -->
+            <div class="phase-indicator">
+                <div class="phase-title">Role Distribution</div>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 1rem;">
+                    <div style="text-align: center;">
+                        <div style="width: 3rem; height: 3rem; background: var(--accent-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.5rem; color: white; font-weight: 700;">@GetCivilianCount()</div>
+                        <div style="font-weight: 600; color: var(--text-primary);">Civilians</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">Good guys</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="width: 3rem; height: 3rem; background: var(--danger); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.5rem; color: white; font-weight: 700;">@GetUndercoverCount()</div>
+                        <div style="font-weight: 600; color: var(--text-primary);">Undercover</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">Secret agent</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="width: 3rem; height: 3rem; background: var(--text-muted); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.5rem; color: white; font-weight: 700;">@GetMisterWhiteCount()</div>
+                        <div style="font-weight: 600; color: var(--text-primary);">Mr. White</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">Mystery role</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Start Players -->
+            @if (suggestedNames.Any())
+            {
+                <div class="form-group">
+                    <label class="form-label">Quick Start - Suggested Players</label>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.5rem;">
+                        @foreach (var name in suggestedNames.Take(playerCount - players.Count))
+                        {
+                            <button @onclick="() => AddSuggestedPlayer(name)" class="btn btn-secondary" style="padding: 0.5rem;">
+                                + @name
+                            </button>
+                        }
+                    </div>
+                    @if (suggestedNames.Count > playerCount - players.Count)
+                    {
+                        <button @onclick="GenerateSuggestedNames" class="btn btn-secondary" style="margin-top: 0.5rem; font-size: 0.9rem;">
+                            🎲 Generate different names
+                        </button>
+                    }
+                </div>
+            }
+
+            <!-- Current Players -->
+            @if (players.Any())
+            {
+                <div class="form-group">
+                    <label class="form-label">Players (@players.Count/@playerCount)</label>
+                    <div class="player-list">
+                        @foreach (var player in players)
+                        {
+                            <div class="player-chip">
+                                <span class="player-name">@player.Name</span>
+                                <button @onclick="() => RemovePlayer(player)" class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">Remove</button>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            <!-- Add Player -->
+            <div class="form-group">
+                <label class="form-label">Add Player</label>
+                <div style="display: flex; gap: 0.5rem;">
+                    <input @bind="newPlayerName" @onkeypress="OnPlayerNameKeyPress" placeholder="Enter player name" class="form-control" />
+                    <button @onclick="AddPlayer" disabled="@(!CanAddPlayer())" class="btn btn-primary">Add</button>
+                </div>
+            </div>
+
+            <!-- Start Game -->
+            <div style="text-align: center; margin-top: 2rem;">
+                <button @onclick="StartGame" disabled="@(!CanStartGame())" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;">
+                    @if (gameState?.Status == GameStatus.InProgress)
+                    {
+                        <span>Starting...</span>
+                    }
+                    else
+                    {
+                        <span>Start Undercover Game (@players.Count players)</span>
+                    }
+                </button>
+            </div>
+        </div>
+    }
+    else if (gamePhase == GamePhase.RoleAssignment)
+    {
+        <!-- Role Assignment Phase -->
+        <div class="card">
+            <div class="card-header">
+                <h1>🃏 Role Assignment</h1>
+                <p style="color: var(--text-muted); text-align: center; margin: 0;">Each player picks a card to discover their role!</p>
+            </div>
+            
+            <!-- Current Player Indicator -->
+            <div class="phase-indicator">
+                <div class="phase-title">@players[currentCardIndex].Name's Turn</div>
+                <div class="phase-description">Pass the device to @players[currentCardIndex].Name to pick their card</div>
+            </div>
+
+            <!-- Available Cards -->
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <h3 style="color: var(--text-secondary); margin-bottom: 1rem;">Cards Remaining: @availableCards.Count</h3>
+                <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; max-width: 400px; margin: 0 auto;">
+                    @for (int i = 0; i < availableCards.Count; i++)
+                    {
+                        var cardIndex = i;
+                        <div @onclick="() => PickCard(cardIndex)" 
+                             style="aspect-ratio: 1; background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)); border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.3s; font-size: 2rem;"
+                             onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                            🃏
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Instructions -->
+            <div style="background: var(--bg-glass); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; text-align: center;">
+                <p style="color: var(--text-muted); margin: 0;">Click on any card above to reveal your role</p>
+            </div>
+        </div>
+    }
+    else if (gamePhase == GamePhase.RoleRevealed)
+    {
+        <!-- Role Revealed -->
+        <div class="card">
+            <div class="card-header">
+                <h1>🎭 Your Role</h1>
+            </div>
+            
+            <!-- Role Display -->
+            <div style="text-align: center; margin-bottom: 2rem;">
+                @if (currentPlayerRole != null)
+                {
+                    <div class="role-badge role-@currentPlayerRole.ToLower()" style="font-size: 1.2rem; padding: 1rem 2rem; margin-bottom: 1rem;">
+                        @GetRoleDisplayName(currentPlayerRole)
+                    </div>
+                    
+                    @if (currentPlayerRole == GameConstants.PlayerRoles.Civilian)
+                    {
+                        <div class="word-display">
+                            <div class="word-category">Your Word</div>
+                            <div class="word-text">@currentGameWordPair?.Civilian</div>
+                        </div>
+                        <p style="color: var(--text-muted); text-align: center;">You are a Civilian. Work with other civilians to find the Undercover agent!</p>
+                    }
+                    else if (currentPlayerRole == GameConstants.PlayerRoles.Undercover)
+                    {
+                        <div class="word-display">
+                            <div class="word-category">Your Word</div>
+                            <div class="word-text">@currentGameWordPair?.Undercover</div>
+                        </div>
+                        <p style="color: var(--text-muted); text-align: center;">You are the Undercover agent. Blend in without revealing your identity!</p>
+                    }
+                    else if (currentPlayerRole == GameConstants.PlayerRoles.MrWhite)
+                    {
+                        <div class="word-display">
+                            <div class="word-category">Your Challenge</div>
+                            <div class="word-text">No Word Given</div>
+                        </div>
+                        <p style="color: var(--text-muted); text-align: center;">You are Mr. White. Figure out the topic and blend in without a word!</p>
+                    }
+                }
+            </div>
+
+            <!-- Continue Button -->
+            <div style="text-align: center;">
+                <button @onclick="ContinueToNextPlayer" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;">
+                    @if (currentCardIndex < players.Count - 1)
+                    {
+                        <span>Continue to Next Player</span>
+                    }
+                    else
+                    {
+                        <span>Start Discussion Phase</span>
+                    }
+                </button>
+            </div>
+        </div>
+    }
+    else if (gamePhase == GamePhase.Discussion)
+    {
+        <!-- Discussion Phase -->
+        <div class="card">
+            <div class="card-header">
+                <h1>💬 Discussion Phase</h1>
+                <p style="color: var(--text-muted); text-align: center; margin: 0;">Discuss and find the Undercover agent!</p>
+            </div>
+            
+            <!-- Timer -->
+            @if (discussionTimeRemaining > 0)
+            {
+                <div class="timer">
+                    <div class="timer-value">@FormatTime(discussionTimeRemaining)</div>
+                    <div class="timer-label">remaining</div>
+                </div>
+            }
+
+            <!-- Game Info -->
+            <div class="phase-indicator">
+                <div class="phase-title">Round @(gameState?.CurrentRound ?? 1)</div>
+                <div class="phase-description">Everyone describes their word. Try to identify who doesn't belong!</div>
+            </div>
+
+            <!-- Players List -->
+            <div class="player-list">
+                @foreach (var player in players)
+                {
+                    <div class="player-chip">
+                        <span class="player-name">@player.Name</span>
+                        <span class="player-status">Ready to discuss</span>
+                    </div>
+                }
+            </div>
+
+            <!-- Manual Progress -->
+            <div style="text-align: center;">
+                <button @onclick="StartVoting" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;">
+                    Start Voting Phase
+                </button>
+            </div>
+        </div>
+    }
+    else if (gamePhase == GamePhase.Voting)
+    {
+        <!-- Voting Phase -->
+        <div class="card">
+            <div class="card-header">
+                <h1>🗳️ Voting Phase</h1>
+                <p style="color: var(--text-muted); text-align: center; margin: 0;">Vote for who you think is the Undercover agent!</p>
+            </div>
+            
+            <!-- Vote Cards -->
+            <div class="vote-grid">
+                @foreach (var player in players)
+                {
+                    <div class="vote-card @(selectedVoteTarget == player.Id ? "selected" : "")" 
+                         @onclick="() => SelectVoteTarget(player.Id)">
+                        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem;">@player.Name</div>
+                        <div style="font-size: 0.9rem; color: var(--text-muted);">Click to vote</div>
+                    </div>
+                }
+            </div>
+
+            <!-- Submit Vote -->
+            <div style="text-align: center;">
+                <button @onclick="SubmitVote" disabled="@(selectedVoteTarget == null)" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;">
+                    Submit Vote
+                </button>
+            </div>
+        </div>
+    }
+    else if (gamePhase == GamePhase.Results)
+    {
+        <!-- Results Phase -->
+        <div class="card">
+            <div class="card-header">
+                <h1>🏆 Game Results</h1>
+            </div>
+            
+            <!-- Winner Display -->
+            @if (gameResult != null)
+            {
+                <div style="text-align: center; margin-bottom: 2rem;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">
+                        @if (gameResult.Winner == "Civilians")
+                        {
+                            <span>🕵️‍♂️</span>
+                        }
+                        else if (gameResult.Winner == "Undercover")
+                        {
+                            <span>🎭</span>
+                        }
+                        else
+                        {
+                            <span>❓</span>
+                        }
+                    </div>
+                    <h2 style="color: var(--accent-primary); margin-bottom: 0.5rem;">@gameResult.Winner Wins!</h2>
+                    <p style="color: var(--text-muted);">@gameResult.Reason</p>
+                </div>
+
+                <!-- Player Roles Revealed -->
+                <div class="form-group">
+                    <label class="form-label">Player Roles</label>
+                    <div class="player-list">
+                        @foreach (var player in players)
+                        {
+                            <div class="player-chip">
+                                <span class="player-name">@player.Name</span>
+                                <span class="role-badge role-@player.Role.ToLower()">
+                                    @GetRoleDisplayName(player.Role)
+                                </span>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Word Reveal -->
+                @if (currentGameWordPair != null)
+                {
+                    <div class="phase-indicator">
+                        <div class="phase-title">The Words Were</div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                            <div style="text-align: center;">
+                                <div style="font-weight: 600; color: var(--accent-primary);">Civilian Word</div>
+                                <div style="font-size: 1.2rem; color: var(--text-primary);">@currentGameWordPair.Civilian</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-weight: 600; color: var(--danger);">Undercover Word</div>
+                                <div style="font-size: 1.2rem; color: var(--text-primary);">@currentGameWordPair.Undercover</div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+
+            <!-- Play Again -->
+            <div style="text-align: center; margin-top: 2rem;">
+                <button @onclick="ResetGame" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;">
+                    Play Again
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    // Game state
+    private GamePhase gamePhase = GamePhase.Setup;
+    private GameStateDTO? gameState;
+    private GameResultDTO? gameResult;
+    private List<GamePlayer> players = new();
+    private string newPlayerName = "";
+    private int playerCount = 5;
+    
+    // Word categories
+    private List<WordPairCategory> wordCategories = new();
+    private string selectedCategoryName = "";
+    
+    // Role assignment
+    private List<(string Role, WordPair? WordPair)> availableCards = new();
+    private int currentCardIndex = 0;
+    private string? currentPlayerRole;
+    private WordPair? currentGameWordPair;
+    
+    // Discussion & Voting
+    private int discussionTimeRemaining = 0;
+    private Timer? discussionTimer;
+    private string? selectedVoteTarget;
+    
+    // Suggested players
+    private List<string> suggestedNames = new();
+    
+    // Local player class with role
+    public class GamePlayer
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string Role { get; set; } = string.Empty;
+    }
+    
+    private enum GamePhase
+    {
+        Setup,
+        RoleAssignment,
+        RoleRevealed,
+        Discussion,
+        Voting,
+        Results
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadWordCategories();
+        GenerateSuggestedNames();
+    }
+
+    private async Task LoadWordCategories()
+    {
+        try
+        {
+            wordCategories = await WordPairService.GetCategoriesAsync();
+            if (wordCategories.Any())
+            {
+                selectedCategoryName = wordCategories.First().Name;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading word categories: {ex.Message}");
+        }
+    }
+
+    private void GenerateSuggestedNames()
+    {
+        var allNames = new List<string>
+        {
+            "Alice", "Bob", "Charlie", "Diana", "Eve", "Frank", "Grace", "Henry",
+            "Ivy", "Jack", "Kate", "Liam", "Mia", "Noah", "Olivia", "Paul",
+            "Quinn", "Ruby", "Sam", "Tina", "Uma", "Victor", "Wendy", "Xander",
+            "Yara", "Zoe", "Alex", "Blake", "Casey", "Drew", "Ellis", "Finley"
+        };
+
+        var random = new Random();
+        suggestedNames = allNames.OrderBy(x => random.Next()).Take(12).ToList();
+    }
+
+    private async Task OnPlayerCountChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int count))
+        {
+            playerCount = count;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void AddSuggestedPlayer(string name)
+    {
+        if (CanAddPlayer() && !players.Any(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
+        {
+            players.Add(new GamePlayer { Id = Guid.NewGuid().ToString(), Name = name });
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnPlayerNameKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await AddPlayer();
+        }
+    }
+
+    private async Task AddPlayer()
+    {
+        if (CanAddPlayer() && !string.IsNullOrWhiteSpace(newPlayerName))
+        {
+            var trimmedName = newPlayerName.Trim();
+            if (!players.Any(p => p.Name.Equals(trimmedName, StringComparison.OrdinalIgnoreCase)))
+            {
+                players.Add(new GamePlayer { Id = Guid.NewGuid().ToString(), Name = trimmedName });
+                newPlayerName = "";
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+    }
+
+    private void RemovePlayer(GamePlayer player)
+    {
+        players.Remove(player);
+        StateHasChanged();
+    }
+
+    private bool CanAddPlayer()
+    {
+        return players.Count < playerCount && !string.IsNullOrWhiteSpace(newPlayerName);
+    }
+
+    private bool CanStartGame()
+    {
+        return players.Count >= 3 && players.Count == playerCount && !string.IsNullOrEmpty(selectedCategoryName);
+    }
+
+    private async Task StartGame()
+    {
+        try
+        {
+            var selectedCategory = wordCategories.FirstOrDefault(c => c.Name == selectedCategoryName);
+            if (selectedCategory == null) return;
+
+            // Create game through LocalGameService
+            var createGameDto = new CreateGameRequestDTO
+            {
+                HostNickname = players.FirstOrDefault()?.Name ?? "Host",
+                GameType = "Undercover"
+            };
+
+            gameState = await LocalGameService.CreateGameAsync(createGameDto);
+
+            // Guard: CreateGameAsync may return null in error scenarios
+            if (gameState == null)
+            {
+                Console.WriteLine("Failed to create game (CreateGameAsync returned null).");
+                return;
+            }
+
+            // Add players to the game
+            foreach (var player in players.Skip(1)) // Skip the first player as they're already the host
+            {
+                await LocalGameService.JoinGameAsync(gameState.GameId, new JoinGameRequestDTO { Nickname = player.Name });
+            }
+
+            // Start the game
+            await LocalGameService.StartGameAsync(gameState.GameId);
+
+            // Get updated game state
+            gameState = await LocalGameService.GetGameStateAsync(gameState.GameId);
+            
+            // Set up role assignment
+            SetupRoleAssignment(selectedCategory);
+            gamePhase = GamePhase.RoleAssignment;
+            
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error starting game: {ex.Message}");
+        }
+    }
+
+    private void SetupRoleAssignment(WordPairCategory category)
+    {
+        var random = new Random();
+        var selectedPair = category.Pairs[random.Next(category.Pairs.Count)];
+        currentGameWordPair = selectedPair;
+
+        // Create role distribution
+        var roles = new List<string>();
+        
+        // Add civilians
+        for (int i = 0; i < GetCivilianCount(); i++)
+        {
+            roles.Add(GameConstants.PlayerRoles.Civilian);
+        }
+        
+        // Add undercover
+        for (int i = 0; i < GetUndercoverCount(); i++)
+        {
+            roles.Add(GameConstants.PlayerRoles.Undercover);
+        }
+        
+        // Add Mr. White
+        for (int i = 0; i < GetMisterWhiteCount(); i++)
+        {
+            roles.Add(GameConstants.PlayerRoles.MrWhite);
+        }
+
+        // Shuffle roles
+        roles = roles.OrderBy(x => random.Next()).ToList();
+
+    // Create available cards (capture currentGameWordPair as nullable)
+    availableCards = roles.Select(role => (role, (WordPair?)currentGameWordPair)).ToList();
+        currentCardIndex = 0;
+    }
+
+    private async Task PickCard(int cardIndex)
+    {
+        if (cardIndex >= 0 && cardIndex < availableCards.Count)
+        {
+            var selectedCard = availableCards[cardIndex];
+            currentPlayerRole = selectedCard.Role;
+            
+            // Assign role to current player
+            players[currentCardIndex].Role = selectedCard.Role;
+            
+            // Remove the selected card
+            availableCards.RemoveAt(cardIndex);
+            
+            gamePhase = GamePhase.RoleRevealed;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task ContinueToNextPlayer()
+    {
+        currentCardIndex++;
+        
+        if (currentCardIndex >= players.Count)
+        {
+            // All players have picked cards, start discussion
+            gamePhase = GamePhase.Discussion;
+            StartDiscussionTimer();
+        }
+        else
+        {
+            // Next player's turn
+            gamePhase = GamePhase.RoleAssignment;
+            currentPlayerRole = null;
+        }
+        
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void StartDiscussionTimer()
+    {
+        discussionTimeRemaining = 180; // 3 minutes
+        
+        discussionTimer = new Timer(async _ =>
+        {
+            discussionTimeRemaining--;
+            await InvokeAsync(StateHasChanged);
+            
+            if (discussionTimeRemaining <= 0)
+            {
+                discussionTimer?.Dispose();
+                await StartVoting();
+            }
+        }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+    }
+
+    private async Task StartVoting()
+    {
+        discussionTimer?.Dispose();
+        gamePhase = GamePhase.Voting;
+        selectedVoteTarget = null;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void SelectVoteTarget(string playerId)
+    {
+        selectedVoteTarget = playerId;
+        StateHasChanged();
+    }
+
+    private async Task SubmitVote()
+    {
+        if (selectedVoteTarget != null)
+        {
+            // Simple voting logic - in a real game you'd collect all votes
+            var votedPlayer = players.FirstOrDefault(p => p.Id == selectedVoteTarget);
+            if (votedPlayer != null)
+            {
+                // Determine game result
+                DetermineGameResult(votedPlayer);
+                gamePhase = GamePhase.Results;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+    }
+
+    private void DetermineGameResult(GamePlayer votedOutPlayer)
+    {
+        gameResult = new GameResultDTO();
+        
+        if (votedOutPlayer.Role == GameConstants.PlayerRoles.Undercover)
+        {
+            gameResult.Winner = "Civilians";
+            gameResult.Reason = "The Undercover agent was successfully identified!";
+        }
+        else if (votedOutPlayer.Role == GameConstants.PlayerRoles.Civilian)
+        {
+            gameResult.Winner = "Undercover";
+            gameResult.Reason = "A Civilian was voted out - Undercover wins!";
+        }
+        else // Mr. White
+        {
+            gameResult.Winner = "Mr. White";
+            gameResult.Reason = "Mr. White was voted out but wins for surviving this long!";
+        }
+
+        if (gameState != null)
+        {
+            gameState.Status = GameStatus.Finished;
+        }
+    }
+
+    private async Task ResetGame()
+    {
+        gamePhase = GamePhase.Setup;
+        gameState = null;
+        gameResult = null;
+        players.Clear();
+        newPlayerName = "";
+        availableCards.Clear();
+        currentCardIndex = 0;
+        currentPlayerRole = null;
+        currentGameWordPair = null;
+        selectedVoteTarget = null;
+        discussionTimeRemaining = 0;
+        discussionTimer?.Dispose();
+        
+        GenerateSuggestedNames();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    // Helper methods
+    private int GetCivilianCount()
+    {
+        if (playerCount <= 4) return playerCount - 1;
+        if (playerCount <= 6) return playerCount - 2;
+        if (playerCount <= 8) return playerCount - 3;
+        return playerCount - 4;
+    }
+
+    private int GetUndercoverCount()
+    {
+        return 1;
+    }
+
+    private int GetMisterWhiteCount()
+    {
+        if (playerCount <= 4) return 0;
+        if (playerCount <= 6) return 1;
+        if (playerCount <= 8) return 1;
+        return 2;
+    }
+
+    private string GetRoleDisplayName(string role)
+    {
+        return role switch
+        {
+            GameConstants.PlayerRoles.Civilian => "Civilian",
+            GameConstants.PlayerRoles.Undercover => "Undercover Agent",
+            GameConstants.PlayerRoles.MrWhite => "Mr. White",
+            _ => "Unknown"
+        };
+    }
+
+    private string FormatTime(int seconds)
+    {
+        var minutes = seconds / 60;
+        var remainingSeconds = seconds % 60;
+        return $"{minutes:D2}:{remainingSeconds:D2}";
+    }
+
+    public void Dispose()
+    {
+        discussionTimer?.Dispose();
+    }
+}
