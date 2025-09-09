@@ -1,0 +1,33 @@
+name: Build and publish to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore NuGet packages
+        run: dotnet restore ./undercover-client/undercover-client.csproj
+
+      - name: Publish Blazor WebAssembly (Release)
+        run: |
+          dotnet publish ./undercover-client/undercover-client.csproj -c Release -o ./publish
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./publish/wwwroot
+          publish_branch: gh-pages
+          force_orphan: true
