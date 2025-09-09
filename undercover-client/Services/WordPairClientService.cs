@@ -55,9 +55,19 @@ namespace RoamingRoutes.Client.Services
             try
             {
                 // Try to load from YAML file
+                Console.WriteLine("Attempting to load WordPairs.yaml...");
                 var yamlContent = await _httpClient.GetStringAsync("WordPairs.yaml");
+                Console.WriteLine($"YAML content loaded, length: {yamlContent.Length}");
+                
                 var deserializer = new DeserializerBuilder().Build();
                 var yamlData = deserializer.Deserialize<YamlWordPairData>(yamlContent);
+                Console.WriteLine($"YAML parsed successfully, found {yamlData.Categories.Count} categories");
+                
+                // Debug: Log each category name
+                foreach (var category in yamlData.Categories)
+                {
+                    Console.WriteLine($"Category: '{category.Name}' with {category.Pairs.Count} pairs");
+                }
 
                 return yamlData.Categories.Select(yamlCategory => new WordPairCategory
                 {
@@ -70,9 +80,10 @@ namespace RoamingRoutes.Client.Services
                     }).ToList()
                 }).ToList();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 // Fallback to hardcoded categories if YAML loading fails
+                Console.WriteLine($"Failed to load YAML: {ex.Message}");
                 return new List<WordPairCategory>
                 {
                     new WordPairCategory
