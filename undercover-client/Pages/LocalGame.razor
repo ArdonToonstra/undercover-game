@@ -152,26 +152,22 @@
         <!-- Role Assignment Phase -->
         <div class="card">
             <div class="card-header">
-                <h1>🃏 Role Assignment</h1>
-                <p style="color: var(--text-muted); text-align: center; margin: 0;">Each player picks a card to discover their role!</p>
+                <h1>� @players[currentCardIndex].Name's Turn</h1>
+                <p style="color: var(--text-muted); text-align: center; margin: 0;">Pass the device to @players[currentCardIndex].Name to pick their card</p>
             </div>
             
-            <!-- Current Player Indicator -->
-            <div class="phase-indicator">
-                <div class="phase-title">@players[currentCardIndex].Name's Turn</div>
-                <div class="phase-description">Pass the device to @players[currentCardIndex].Name to pick their card</div>
-            </div>
-
             <!-- Available Cards -->
             <div style="text-align: center; margin-bottom: 2rem;">
-                <h3 style="color: var(--text-secondary); margin-bottom: 1rem;">Cards Remaining: @availableCards.Count</h3>
-                <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; max-width: 400px; margin: 0 auto;">
+                <h3 style="color: var(--text-secondary); margin-bottom: 2rem;">Choose Your Card (@availableCards.Count remaining)</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1.5rem; max-width: 600px; margin: 0 auto;">
                     @for (int i = 0; i < availableCards.Count; i++)
                     {
                         var cardIndex = i;
                         <div @onclick="() => PickCard(cardIndex)" 
-                             style="aspect-ratio: 1; background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)); border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.3s; font-size: 2rem;"
-                             onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                             class="game-card"
+                             style="aspect-ratio: 0.7; background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)); border-radius: 16px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s ease; font-size: 3.5rem; box-shadow: 0 8px 25px rgba(139, 92, 246, 0.3); border: 2px solid rgba(255, 255, 255, 0.1);"
+                             onmouseover="this.style.transform='scale(1.08) translateY(-8px)'; this.style.boxShadow='0 12px 35px rgba(139, 92, 246, 0.4)';" 
+                             onmouseout="this.style.transform='scale(1) translateY(0)'; this.style.boxShadow='0 8px 25px rgba(139, 92, 246, 0.3)';">
                             🃏
                         </div>
                     }
@@ -179,8 +175,8 @@
             </div>
 
             <!-- Instructions -->
-            <div style="background: var(--bg-glass); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; text-align: center;">
-                <p style="color: var(--text-muted); margin: 0;">Click on any card above to reveal your role</p>
+            <div style="background: var(--bg-glass); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; text-align: center;">
+                <p style="color: var(--text-muted); margin: 0; font-size: 1.1rem;">Click on any card above to reveal your role and see your secret word</p>
             </div>
         </div>
     }
@@ -189,24 +185,19 @@
         <!-- Role Revealed -->
         <div class="card">
             <div class="card-header">
-                <h1>🎭 Your Role</h1>
+                <h1>🔍 Your Word</h1>
             </div>
             
-            <!-- Role Display -->
-            <div style="text-align: center; margin-bottom: 2rem;">
+            <!-- Word Display -->
+            <div style="text-align: center; margin-bottom: 3rem;">
                 @if (currentPlayerRole != null)
                 {
-                    <div class="role-badge role-@currentPlayerRole.ToLower()" style="font-size: 1.2rem; padding: 1rem 2rem; margin-bottom: 1rem;">
-                        @GetRoleDisplayName(currentPlayerRole)
-                    </div>
-                    
                     @if (currentPlayerRole == GameConstants.PlayerRoles.Civilian)
                     {
                         <div class="word-display">
                             <div class="word-category">Your Word</div>
                             <div class="word-text">@currentGameWordPair?.Civilian</div>
                         </div>
-                        <p style="color: var(--text-muted); text-align: center;">You are a Civilian. Work with other civilians to find the Undercover agent!</p>
                     }
                     else if (currentPlayerRole == GameConstants.PlayerRoles.Undercover)
                     {
@@ -214,15 +205,13 @@
                             <div class="word-category">Your Word</div>
                             <div class="word-text">@currentGameWordPair?.Undercover</div>
                         </div>
-                        <p style="color: var(--text-muted); text-align: center;">You are the Undercover agent. Blend in without revealing your identity!</p>
                     }
                     else if (currentPlayerRole == GameConstants.PlayerRoles.MrWhite)
                     {
                         <div class="word-display">
-                            <div class="word-category">Your Challenge</div>
-                            <div class="word-text">No Word Given</div>
+                            <div class="word-category">You are Mr. White!</div>
+                            <div class="word-text">Try to blend in.</div>
                         </div>
-                        <p style="color: var(--text-muted); text-align: center;">You are Mr. White. Figure out the topic and blend in without a word!</p>
                     }
                 }
             </div>
@@ -236,7 +225,7 @@
                     }
                     else
                     {
-                        <span>Start Discussion Phase</span>
+                        <span>Start Word Sharing</span>
                     }
                 </button>
             </div>
@@ -244,55 +233,72 @@
     }
     else if (gamePhase == GamePhase.Discussion)
     {
-        <!-- Discussion Phase -->
+        <!-- Word Sharing Phase -->
         <div class="card">
             <div class="card-header">
-                <h1>💬 Discussion Phase</h1>
-                <p style="color: var(--text-muted); text-align: center; margin: 0;">Discuss and find the Undercover agent!</p>
+                <h1>� Word Sharing Phase</h1>
+                <p style="color: var(--text-muted); text-align: center; margin: 0;">Each player says a word related to their card. Follow the order below!</p>
             </div>
             
-            <!-- Timer -->
-            @if (discussionTimeRemaining > 0)
-            {
-                <div class="timer">
-                    <div class="timer-value">@FormatTime(discussionTimeRemaining)</div>
-                    <div class="timer-label">remaining</div>
-                </div>
-            }
-
-            <!-- Game Info -->
+            <!-- Speaking Order -->
             <div class="phase-indicator">
-                <div class="phase-title">Round @(gameState?.CurrentRound ?? 1)</div>
-                <div class="phase-description">Everyone describes their word. Try to identify who doesn't belong!</div>
+                <div class="phase-title">Speaking Order</div>
+                <div class="phase-description">Each player says one word related to their card</div>
             </div>
 
-            <!-- Players List -->
-            <div class="player-list">
-                @foreach (var player in players)
-                {
-                    <div class="player-chip">
-                        <span class="player-name">@player.Name</span>
-                        <span class="player-status">Ready to discuss</span>
-                    </div>
-                }
+            <!-- Players List in Speaking Order -->
+            <div class="form-group">
+                <label class="form-label">Speaking Order</label>
+                <div class="player-list">
+                    @{
+                        var speakingOrder = GetSpeakingOrder();
+                        for (int i = 0; i < speakingOrder.Count; i++)
+                        {
+                            var player = speakingOrder[i];
+                            <div class="player-chip">
+                                <span class="player-name">@((i + 1)). @player.Name</span>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+
+            <!-- Instructions -->
+            <div style="background: var(--bg-glass); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem;">
+                <h4 style="color: var(--accent-primary); margin-bottom: 1rem;">How to Play:</h4>
+                <ul style="color: var(--text-muted); margin: 0; padding-left: 1.5rem;">
+                    <li>Each player says ONE word related to their card</li>
+                    <li>Follow the speaking order shown above</li>
+                    <li>Listen carefully to spot who doesn't belong</li>
+                    <li>Mr. White needs to blend in without being too obvious</li>
+                </ul>
             </div>
 
             <!-- Manual Progress -->
             <div style="text-align: center;">
                 <button @onclick="StartVoting" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;">
-                    Start Voting Phase
+                    Start Voting & Discussion
                 </button>
             </div>
         </div>
     }
     else if (gamePhase == GamePhase.Voting)
     {
-        <!-- Voting Phase -->
+        <!-- Voting & Discussion Phase -->
         <div class="card">
             <div class="card-header">
-                <h1>🗳️ Voting Phase</h1>
-                <p style="color: var(--text-muted); text-align: center; margin: 0;">Vote for who you think is the Undercover agent!</p>
+                <h1>🗳️ Voting & Discussion</h1>
+                <p style="color: var(--text-muted); text-align: center; margin: 0;">Discuss who you think is the Undercover agent and vote!</p>
             </div>
+            
+            <!-- Timer -->
+            @if (votingTimeRemaining > 0)
+            {
+                <div class="timer">
+                    <div class="timer-value">@FormatTime(votingTimeRemaining)</div>
+                    <div class="timer-label">remaining to vote</div>
+                </div>
+            }
             
             <!-- Vote Cards -->
             <div class="vote-grid">
@@ -311,6 +317,77 @@
                 <button @onclick="SubmitVote" disabled="@(selectedVoteTarget == null)" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;">
                     Submit Vote
                 </button>
+            </div>
+        </div>
+    }
+    else if (gamePhase == GamePhase.MrWhiteGuess)
+    {
+        <!-- Mr. White Guess Phase -->
+        <div class="card">
+            <div class="card-header">
+                <h1>❓ Mr. White's Last Chance</h1>
+                <p style="color: var(--text-muted); text-align: center; margin: 0;">@votedOutMrWhite?.Name has been voted out! Can you guess the civilian word?</p>
+            </div>
+            
+            <!-- Mr. White Info -->
+            <div class="phase-indicator">
+                <div class="phase-title">Final Challenge</div>
+                <div class="phase-description">If you guess correctly, you win and get 3 points!</div>
+            </div>
+
+            <!-- Guess Input -->
+            <div class="form-group">
+                <label class="form-label">What is the civilian word?</label>
+                <div style="display: flex; gap: 0.5rem;">
+                    <input @bind="mrWhiteGuess" @onkeypress="OnMrWhiteGuessKeyPress" placeholder="Enter your guess..." class="form-control" style="flex: 1;" />
+                    <button @onclick="SubmitMrWhiteGuess" disabled="@string.IsNullOrWhiteSpace(mrWhiteGuess)" class="btn btn-primary">Submit Guess</button>
+                </div>
+            </div>
+
+            <!-- Instructions -->
+            <div style="background: var(--bg-glass); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem;">
+                <p style="color: var(--text-muted); margin: 0; text-align: center;">
+                    <strong>Pass the device to @votedOutMrWhite?.Name</strong><br />
+                    Type the word you think the civilians had. If correct, you win the entire round!
+                </p>
+            </div>
+        </div>
+    }
+    else if (gamePhase == GamePhase.MrWhiteEliminated)
+    {
+        <!-- Mr. White Eliminated Phase -->
+        <div class="card">
+            <div class="card-header">
+                <h1>❌ Mr. White Eliminated</h1>
+                <p style="color: var(--text-muted); text-align: center; margin: 0;">@votedOutMrWhite?.Name guessed incorrectly and has been eliminated!</p>
+            </div>
+            
+            <!-- Elimination Info -->
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">💀</div>
+                <h2 style="color: var(--danger); margin-bottom: 1rem;">Wrong Guess!</h2>
+                <div style="background: var(--bg-glass); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
+                    <p style="color: var(--text-muted); margin: 0; font-size: 1.1rem;">
+                        <strong>@votedOutMrWhite?.Name</strong> guessed: "<strong>@mrWhiteGuess</strong>"<br />
+                    </p>
+                </div>
+                <p style="color: var(--text-muted);">@votedOutMrWhite?.Name is eliminated from this round.</p>
+            </div>
+
+            <!-- Continue Button -->
+            <div style="text-align: center;">
+                @if (players.Count <= 2)
+                {
+                    <button @onclick="() => gamePhase = GamePhase.Results" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;">
+                        View Final Results
+                    </button>
+                }
+                else
+                {
+                    <button @onclick="StartNewWordRound" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;">
+                        Continue New Word Round
+                    </button>
+                }
             </div>
         </div>
     }
@@ -420,7 +497,13 @@
     // Discussion & Voting
     private int discussionTimeRemaining = 0;
     private Timer? discussionTimer;
+    private int votingTimeRemaining = 0;
+    private Timer? votingTimer;
     private string? selectedVoteTarget;
+    
+    // Mr. White guess
+    private GamePlayer? votedOutMrWhite;
+    private string mrWhiteGuess = "";
     
     // Suggested players
     private List<string> suggestedNames = new();
@@ -441,6 +524,8 @@
         RoleRevealed,
         Discussion,
         Voting,
+        MrWhiteGuess,
+        MrWhiteEliminated,
         Results
     }
 
@@ -653,7 +738,6 @@
         {
             // All players have picked cards, start discussion
             gamePhase = GamePhase.Discussion;
-            StartDiscussionTimer();
         }
         else
         {
@@ -665,21 +749,19 @@
         await InvokeAsync(StateHasChanged);
     }
 
-    private void StartDiscussionTimer()
+    private List<GamePlayer> GetSpeakingOrder()
     {
-        discussionTimeRemaining = 180; // 3 minutes
+        // Get all non-Mr. White players first, then Mr. White players
+        var nonMrWhitePlayers = players.Where(p => p.Role != GameConstants.PlayerRoles.MrWhite).ToList();
+        var mrWhitePlayers = players.Where(p => p.Role == GameConstants.PlayerRoles.MrWhite).ToList();
         
-        discussionTimer = new Timer(async _ =>
-        {
-            discussionTimeRemaining--;
-            await InvokeAsync(StateHasChanged);
-            
-            if (discussionTimeRemaining <= 0)
-            {
-                discussionTimer?.Dispose();
-                await StartVoting();
-            }
-        }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+        // Randomize the order within each group
+        var random = new Random();
+        nonMrWhitePlayers = nonMrWhitePlayers.OrderBy(x => random.Next()).ToList();
+        mrWhitePlayers = mrWhitePlayers.OrderBy(x => random.Next()).ToList();
+        
+        // Combine: non-Mr. White first, then Mr. White
+        return nonMrWhitePlayers.Concat(mrWhitePlayers).ToList();
     }
 
     private async Task StartVoting()
@@ -687,6 +769,25 @@
         discussionTimer?.Dispose();
         gamePhase = GamePhase.Voting;
         selectedVoteTarget = null;
+        
+        // Start voting timer (5 minutes)
+        votingTimeRemaining = 300;
+        votingTimer = new Timer(async _ =>
+        {
+            votingTimeRemaining--;
+            await InvokeAsync(StateHasChanged);
+            
+            if (votingTimeRemaining <= 0)
+            {
+                votingTimer?.Dispose();
+                // Auto-submit vote or show time's up message
+                if (selectedVoteTarget != null)
+                {
+                    await SubmitVote();
+                }
+            }
+        }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+        
         await InvokeAsync(StateHasChanged);
     }
 
@@ -700,16 +801,133 @@
     {
         if (selectedVoteTarget != null)
         {
-            // Simple voting logic - in a real game you'd collect all votes
+            votingTimer?.Dispose();
+            
             var votedPlayer = players.FirstOrDefault(p => p.Id == selectedVoteTarget);
             if (votedPlayer != null)
             {
-                // Determine game result
-                DetermineGameResult(votedPlayer);
-                gamePhase = GamePhase.Results;
-                await InvokeAsync(StateHasChanged);
+                // Check if Mr. White was voted out
+                if (votedPlayer.Role == GameConstants.PlayerRoles.MrWhite)
+                {
+                    votedOutMrWhite = votedPlayer;
+                    gamePhase = GamePhase.MrWhiteGuess;
+                    mrWhiteGuess = "";
+                    await InvokeAsync(StateHasChanged);
+                }
+                else
+                {
+                    // Normal voting result
+                    DetermineGameResult(votedPlayer);
+                    gamePhase = GamePhase.Results;
+                    await InvokeAsync(StateHasChanged);
+                }
             }
         }
+    }
+
+    private async Task OnMrWhiteGuessKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SubmitMrWhiteGuess();
+        }
+    }
+
+    private async Task SubmitMrWhiteGuess()
+    {
+        if (string.IsNullOrWhiteSpace(mrWhiteGuess) || votedOutMrWhite == null || currentGameWordPair == null)
+            return;
+
+        var guess = mrWhiteGuess.Trim();
+        var civilianWord = currentGameWordPair.Civilian;
+
+        if (guess.Equals(civilianWord, StringComparison.OrdinalIgnoreCase))
+        {
+            // Mr. White guessed correctly - wins the round
+            gameResult = new GameResultDTO
+            {
+                Winner = "Mr. White",
+                Reason = $"Mr. White ({votedOutMrWhite.Name}) correctly guessed the civilian word: '{civilianWord}'!"
+            };
+            
+            // Award 3 points to Mr. White
+            votedOutMrWhite.Score += 3;
+            
+            gamePhase = GamePhase.Results;
+        }
+        else
+        {
+            // Mr. White guessed wrong - show elimination phase
+            gamePhase = GamePhase.MrWhiteEliminated;
+        }
+        
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ContinueWithoutMrWhite()
+    {
+        if (votedOutMrWhite == null) return;
+
+        // Remove Mr. White from the game
+        players.Remove(votedOutMrWhite);
+        
+        // Check if game should end (only 2 players left, etc.)
+        if (players.Count <= 2)
+        {
+            // Determine winner based on remaining players
+            var remainingUndercover = players.Where(p => p.Role == GameConstants.PlayerRoles.Undercover).ToList();
+            var remainingCivilians = players.Where(p => p.Role == GameConstants.PlayerRoles.Civilian).ToList();
+            
+            if (remainingUndercover.Any() && remainingCivilians.Any())
+            {
+                gameResult = new GameResultDTO
+                {
+                    Winner = "Draw",
+                    Reason = "Too few players remaining to continue."
+                };
+            }
+            else if (remainingUndercover.Any())
+            {
+                gameResult = new GameResultDTO
+                {
+                    Winner = "Undercover",
+                    Reason = "All civilians eliminated!"
+                };
+                foreach (var player in remainingUndercover)
+                {
+                    player.Score++;
+                }
+            }
+            else
+            {
+                gameResult = new GameResultDTO
+                {
+                    Winner = "Civilians",
+                    Reason = "All undercover agents eliminated!"
+                };
+                foreach (var player in remainingCivilians)
+                {
+                    player.Score++;
+                }
+            }
+            
+            gamePhase = GamePhase.Results;
+        }
+        else
+        {
+            // Continue with another word sharing round
+            gamePhase = GamePhase.Discussion; // Word Sharing Phase
+            selectedVoteTarget = null;
+            votedOutMrWhite = null;
+            mrWhiteGuess = "";
+        }
+        
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task StartNewWordRound()
+    {
+        await ContinueWithoutMrWhite();
     }
 
     private void DetermineGameResult(GamePlayer votedOutPlayer)
@@ -770,6 +988,10 @@
         selectedVoteTarget = null;
         discussionTimeRemaining = 0;
         discussionTimer?.Dispose();
+        votingTimeRemaining = 0;
+        votingTimer?.Dispose();
+        votedOutMrWhite = null;
+        mrWhiteGuess = "";
         
         GenerateSuggestedNames();
         await InvokeAsync(StateHasChanged);
@@ -788,6 +1010,10 @@
         selectedVoteTarget = null;
         discussionTimeRemaining = 0;
         discussionTimer?.Dispose();
+        votingTimeRemaining = 0;
+        votingTimer?.Dispose();
+        votedOutMrWhite = null;
+        mrWhiteGuess = "";
         
         // Reset all players to have no role assignments for the new round
         foreach (var player in players)
@@ -869,5 +1095,6 @@
     public void Dispose()
     {
         discussionTimer?.Dispose();
+        votingTimer?.Dispose();
     }
 }
