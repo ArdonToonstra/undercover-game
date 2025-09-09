@@ -1,4 +1,6 @@
 using RoamingRoutes.Shared.Models.Games;
+using YamlDotNet.Serialization;
+using Microsoft.JSInterop;
 using System.Net.Http.Json;
 
 namespace RoamingRoutes.Client.Services
@@ -12,10 +14,12 @@ namespace RoamingRoutes.Client.Services
     public class WordPairClientService : IWordPairClientService
     {
         private readonly HttpClient _httpClient;
+        private readonly IJSRuntime _jsRuntime;
 
-        public WordPairClientService(HttpClient httpClient)
+        public WordPairClientService(HttpClient httpClient, IJSRuntime jsRuntime)
         {
             _httpClient = httpClient;
+            _jsRuntime = jsRuntime;
         }
 
         public async Task<List<WordPairCategory>> GetCategoriesAsync()
@@ -23,12 +27,12 @@ namespace RoamingRoutes.Client.Services
             try
             {
                 var categories = await _httpClient.GetFromJsonAsync<List<WordPairCategory>>("/api/wordpairs/categories");
-                return categories ?? new List<WordPairCategory>();
+                return categories ?? await GetDefaultCategoriesAsync();
             }
             catch (Exception)
             {
                 // Return default categories if API call fails
-                return GetDefaultCategories();
+                return await GetDefaultCategoriesAsync();
             }
         }
 
@@ -46,22 +50,44 @@ namespace RoamingRoutes.Client.Services
             }
         }
 
-        private List<WordPairCategory> GetDefaultCategories()
+        private async Task<List<WordPairCategory>> GetDefaultCategoriesAsync()
         {
-            return new List<WordPairCategory>
+            try
             {
-                new WordPairCategory
+                // Try to load from YAML file
+                var yamlContent = await _httpClient.GetStringAsync("WordPairs.yaml");
+                var deserializer = new DeserializerBuilder().Build();
+                var yamlData = deserializer.Deserialize<YamlWordPairData>(yamlContent);
+
+                return yamlData.Categories.Select(yamlCategory => new WordPairCategory
                 {
-                    Name = "Everyday Words",
-                    Description = "Common everyday objects and concepts",
-                    Pairs = new List<WordPair>
+                    Name = yamlCategory.Name,
+                    Description = yamlCategory.Description,
+                    Pairs = yamlCategory.Pairs.Select(yamlPair => new WordPair
                     {
-                        new WordPair { Civilian = "Coffee", Undercover = "Tea" },
-                        new WordPair { Civilian = "Dog", Undercover = "Cat" },
-                        new WordPair { Civilian = "Car", Undercover = "Bus" }
+                        Civilian = yamlPair.Civilian,
+                        Undercover = yamlPair.Undercover
+                    }).ToList()
+                }).ToList();
+            }
+            catch (Exception)
+            {
+                // Fallback to hardcoded categories if YAML loading fails
+                return new List<WordPairCategory>
+                {
+                    new WordPairCategory
+                    {
+                        Name = "Everyday Words",
+                        Description = "Common everyday objects and concepts",
+                        Pairs = new List<WordPair>
+                        {
+                            new WordPair { Civilian = "Coffee", Undercover = "Tea" },
+                            new WordPair { Civilian = "Dog", Undercover = "Cat" },
+                            new WordPair { Civilian = "Car", Undercover = "Bus" }
+                        }
                     }
-                }
-            };
+                };
+            }
         }
 
         private WordPair GetDefaultPair()

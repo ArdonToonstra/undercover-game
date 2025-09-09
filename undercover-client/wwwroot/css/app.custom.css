@@ -252,6 +252,18 @@ h3 {
   border: 1px solid rgba(156, 163, 175, 0.3);
 }
 
+/* Score Badge */
+.score-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.8rem;
+  background: rgba(16, 185, 129, 0.2);
+  color: #6ee7b7;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  margin-left: 0.5rem;
+}
+
 /* Game Phase Indicators */
 .phase-indicator {
   text-align: center;

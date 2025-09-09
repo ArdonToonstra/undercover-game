@@ -22,7 +22,8 @@
         <div class="card">
             <div class="card-header">
                 <h1>🎭 Undercover</h1>
-                <p style="color: var(--text-muted); text-align: center; margin: 0;">Pass the device around to play with friends!</p>
+                <p style="color: var(--text-muted); text-align: center; margin: 0.5rem 0;">A social deduction game where players try to identify the "undercover" agent(s). Perfect for groups of 3-10 people. Test your wit and deduction skills!</p>
+                <p style="color: var(--text-muted); text-align: center; margin: 0; font-size: 0.9rem;">Pass the device around to play with friends!</p>
             </div>
             
             <!-- Word Category Selection -->
@@ -127,7 +128,7 @@
                 <label class="form-label">Add Player</label>
                 <div style="display: flex; gap: 0.5rem;">
                     <input @bind="newPlayerName" @onkeypress="OnPlayerNameKeyPress" placeholder="Enter player name" class="form-control" />
-                    <button @onclick="AddPlayer" disabled="@(!CanAddPlayer())" class="btn btn-primary">Add</button>
+                    <button @onclick="AddPlayer" disabled="@(!CanAddPlayerWithName())" class="btn btn-primary">Add</button>
                 </div>
             </div>
 
@@ -345,15 +346,16 @@
 
                 <!-- Player Roles Revealed -->
                 <div class="form-group">
-                    <label class="form-label">Player Roles</label>
+                    <label class="form-label">Player Roles & Scores</label>
                     <div class="player-list">
-                        @foreach (var player in players)
+                        @foreach (var player in players.OrderByDescending(p => p.Score))
                         {
                             <div class="player-chip">
                                 <span class="player-name">@player.Name</span>
                                 <span class="role-badge role-@player.Role.ToLower()">
                                     @GetRoleDisplayName(player.Role)
                                 </span>
+                                <span class="score-badge">@player.Score pts</span>
                             </div>
                         }
                     </div>
@@ -378,11 +380,19 @@
                 }
             }
 
-            <!-- Play Again -->
+            <!-- Game Actions -->
             <div style="text-align: center; margin-top: 2rem;">
-                <button @onclick="ResetGame" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;">
-                    Play Again
-                </button>
+                <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                    <button @onclick="NextRound" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;">
+                        🎲 Next Round
+                    </button>
+                    <button @onclick="ResetGame" class="btn btn-secondary" style="font-size: 1.1rem; padding: 1rem 2rem;">
+                        🔄 New Game
+                    </button>
+                </div>
+                <p style="margin-top: 0.5rem; color: var(--text-muted); font-size: 0.9rem;">
+                    Next Round keeps the same players • New Game starts fresh
+                </p>
             </div>
         </div>
     }
@@ -421,6 +431,7 @@
         public string Id { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
         public string Role { get; set; } = string.Empty;
+        public int Score { get; set; } = 0;
     }
     
     private enum GamePhase
@@ -459,10 +470,13 @@
     {
         var allNames = new List<string>
         {
-            "Alice", "Bob", "Charlie", "Diana", "Eve", "Frank", "Grace", "Henry",
-            "Ivy", "Jack", "Kate", "Liam", "Mia", "Noah", "Olivia", "Paul",
-            "Quinn", "Ruby", "Sam", "Tina", "Uma", "Victor", "Wendy", "Xander",
-            "Yara", "Zoe", "Alex", "Blake", "Casey", "Drew", "Ellis", "Finley"
+            "SneakyPanda", "NinjaTaco", "CosmicBurrito", "CaptainChaos", "MysteryMuffin", "ShadowPickle",
+            "WizardWaffle", "StealthySpoon", "RogueRabbit", "SecretSauce", "PhantomPizza", "CloakedCookie",
+            "SpySquirrel", "HiddenHamster", "DeceptiveDuck", "TrickyTurtle", "SlySalmon", "CraftyCarrot",
+            "SneakySnail", "CleverCactus", "WilyWombat", "DeviantDonut", "MischievousMango", "CunningCupcake",
+            "ArtfulAvocado", "SubtleSandwich", "ElusiveEggplant", "FoxyFalafel", "GuiltyGrape", "LurkerLemon",
+            "BanditBagel", "RascalRadish", "VagabondVegetable", "OutlawOnion", "RebelRice", "PiratePickle",
+            "ThiefTaco", "MarauderMuffin", "ScoundrelSoup", "VillainVanilla", "RogueRamen", "TricksterTofu"
         };
 
         var random = new Random();
@@ -483,6 +497,7 @@
         if (CanAddPlayer() && !players.Any(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
         {
             players.Add(new GamePlayer { Id = Guid.NewGuid().ToString(), Name = name });
+            suggestedNames.Remove(name); // Remove from suggestions once added
             StateHasChanged();
         }
     }
@@ -497,7 +512,7 @@
 
     private async Task AddPlayer()
     {
-        if (CanAddPlayer() && !string.IsNullOrWhiteSpace(newPlayerName))
+        if (CanAddPlayerWithName())
         {
             var trimmedName = newPlayerName.Trim();
             if (!players.Any(p => p.Name.Equals(trimmedName, StringComparison.OrdinalIgnoreCase)))
@@ -516,6 +531,11 @@
     }
 
     private bool CanAddPlayer()
+    {
+        return players.Count < playerCount;
+    }
+
+    private bool CanAddPlayerWithName()
     {
         return players.Count < playerCount && !string.IsNullOrWhiteSpace(newPlayerName);
     }
@@ -700,16 +720,34 @@
         {
             gameResult.Winner = "Civilians";
             gameResult.Reason = "The Undercover agent was successfully identified!";
+            
+            // Award points to civilians
+            foreach (var player in players.Where(p => p.Role == GameConstants.PlayerRoles.Civilian))
+            {
+                player.Score++;
+            }
         }
         else if (votedOutPlayer.Role == GameConstants.PlayerRoles.Civilian)
         {
             gameResult.Winner = "Undercover";
             gameResult.Reason = "A Civilian was voted out - Undercover wins!";
+            
+            // Award points to undercover players
+            foreach (var player in players.Where(p => p.Role == GameConstants.PlayerRoles.Undercover))
+            {
+                player.Score++;
+            }
         }
         else // Mr. White
         {
             gameResult.Winner = "Mr. White";
             gameResult.Reason = "Mr. White was voted out but wins for surviving this long!";
+            
+            // Award points to Mr. White
+            foreach (var player in players.Where(p => p.Role == GameConstants.PlayerRoles.MrWhite))
+            {
+                player.Score++;
+            }
         }
 
         if (gameState != null)
@@ -737,26 +775,77 @@
         await InvokeAsync(StateHasChanged);
     }
 
+    private async Task NextRound()
+    {
+        // Keep the same players and configuration, but start a new round
+        gamePhase = GamePhase.RoleAssignment;
+        gameState = null;
+        gameResult = null;
+        availableCards.Clear();
+        currentCardIndex = 0;
+        currentPlayerRole = null;
+        currentGameWordPair = null;
+        selectedVoteTarget = null;
+        discussionTimeRemaining = 0;
+        discussionTimer?.Dispose();
+        
+        // Reset all players to have no role assignments for the new round
+        foreach (var player in players)
+        {
+            player.Role = "";
+        }
+        
+        // Start the new game with the same configuration
+        await StartGame();
+    }
+
     // Helper methods
     private int GetCivilianCount()
     {
-        if (playerCount <= 4) return playerCount - 1;
-        if (playerCount <= 6) return playerCount - 2;
-        if (playerCount <= 8) return playerCount - 3;
-        return playerCount - 4;
+        return playerCount switch
+        {
+            3 => 2,  // 2 civilians, 1 undercover, 0 white
+            4 => 2,  // 2 civilians, 1 undercover, 1 white
+            5 => 3,  // 3 civilians, 1 undercover, 1 white
+            6 => 3,  // 3 civilians, 2 undercover, 1 white
+            7 => 4,  // 4 civilians, 2 undercover, 1 white
+            8 => 4,  // 4 civilians, 2 undercover, 2 white
+            9 => 5,  // 5 civilians, 2 undercover, 2 white
+            10 => 5, // 5 civilians, 3 undercover, 2 white
+            _ => Math.Max(1, playerCount - GetUndercoverCount() - GetMisterWhiteCount())
+        };
     }
 
     private int GetUndercoverCount()
     {
-        return 1;
+        return playerCount switch
+        {
+            3 => 1,
+            4 => 1,
+            5 => 1,
+            6 => 2,
+            7 => 2,
+            8 => 2,
+            9 => 2,
+            10 => 3,
+            _ => 1
+        };
     }
 
     private int GetMisterWhiteCount()
     {
-        if (playerCount <= 4) return 0;
-        if (playerCount <= 6) return 1;
-        if (playerCount <= 8) return 1;
-        return 2;
+        return playerCount switch
+        {
+            3 => 0,
+            4 => 1,
+            5 => 1,
+            6 => 1,
+            7 => 1,
+            8 => 2,
+            9 => 2,
+            10 => 2,
+            _ => playerCount >= 4 ? 1 : 0
+        };
     }
 
     private string GetRoleDisplayName(string role)

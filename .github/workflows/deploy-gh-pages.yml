@@ -29,6 +29,10 @@ jobs:
         run: |
           dotnet publish ./undercover-client/undercover-client.csproj -c Release -o ./publish
 
+      - name: Fix base href for GitHub Pages
+        run: |
+          sed -i 's/<base href="\/" \/>/<base href="\/undercover-game\/" \/>/g' ./publish/wwwroot/index.html
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
