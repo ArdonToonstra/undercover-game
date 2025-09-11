@@ -22,10 +22,10 @@ namespace RoamingRoutes.Client.Services
 
     public class YamlWordPair
     {
-        [YamlMember(Alias = "civilian")]
-        public string Civilian { get; set; } = "";
+        [YamlMember(Alias = "wordA")]
+        public string WordA { get; set; } = "";
         
-        [YamlMember(Alias = "undercover")]
-        public string Undercover { get; set; } = "";
+        [YamlMember(Alias = "wordB")]
+        public string WordB { get; set; } = "";
     }
 }

@@ -54,29 +54,107 @@ namespace RoamingRoutes.Client.Services
         {
             try
             {
-                // Try to load from YAML file
+                // Try several likely paths for the static YAML file. When Blazor is hosted
+                // the wwwroot contents are served from the app base address, so prefer
+                // building URIs off HttpClient.BaseAddress when available.
                 Console.WriteLine("Attempting to load WordPairs.yaml...");
-                var yamlContent = await _httpClient.GetStringAsync("WordPairs.yaml");
-                Console.WriteLine($"YAML content loaded, length: {yamlContent.Length}");
-                
+
+                var candidatePaths = new List<string>
+                {
+                    "WordPairs.yaml",
+                    "/WordPairs.yaml",
+                    "./WordPairs.yaml",
+                    "wwwroot/WordPairs.yaml"
+                };
+
+                string? yamlContent = null;
+                Exception? lastException = null;
+
+                foreach (var p in candidatePaths)
+                {
+                    try
+                    {
+                        Uri requestUri;
+                        if (_httpClient.BaseAddress != null)
+                        {
+                            requestUri = new Uri(_httpClient.BaseAddress, p);
+                        }
+                        else
+                        {
+                            requestUri = new Uri(p, UriKind.RelativeOrAbsolute);
+                        }
+
+                        Console.WriteLine($"Trying YAML path: {requestUri}");
+                        yamlContent = await _httpClient.GetStringAsync(requestUri.ToString());
+                        if (!string.IsNullOrWhiteSpace(yamlContent))
+                        {
+                            Console.WriteLine($"YAML content loaded from {requestUri}, length: {yamlContent.Length}");
+                            break;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        lastException = ex;
+                        Console.WriteLine($"Failed to load YAML from path '{p}': {ex.Message}");
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(yamlContent))
+                {
+                    // As a last-resort fallback (useful for `dotnet run` dev), try to read
+                    // the file from the local file system under the project wwwroot folder.
+                    try
+                    {
+                        var localPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "WordPairs.yaml");
+                        Console.WriteLine($"HTTP attempts failed — trying local file path: {localPath}");
+                        if (File.Exists(localPath))
+                        {
+                            yamlContent = await File.ReadAllTextAsync(localPath);
+                            Console.WriteLine($"Loaded YAML from local file, length: {yamlContent.Length}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Local file fallback failed: {ex.Message}");
+                    }
+
+                    if (string.IsNullOrWhiteSpace(yamlContent))
+                    {
+                        throw lastException ?? new InvalidOperationException("Could not load WordPairs.yaml from any candidate path.");
+                    }
+                }
+
                 var deserializer = new DeserializerBuilder().Build();
                 var yamlData = deserializer.Deserialize<YamlWordPairData>(yamlContent);
+
+                if (yamlData == null || yamlData.Categories == null)
+                {
+                    throw new InvalidOperationException("YAML file parsed but returned no categories.");
+                }
+
                 Console.WriteLine($"YAML parsed successfully, found {yamlData.Categories.Count} categories");
-                
+
                 // Debug: Log each category name
                 foreach (var category in yamlData.Categories)
                 {
                     Console.WriteLine($"Category: '{category.Name}' with {category.Pairs.Count} pairs");
                 }
 
+                var rng = new Random();
                 return yamlData.Categories.Select(yamlCategory => new WordPairCategory
                 {
                     Name = yamlCategory.Name,
                     Description = yamlCategory.Description,
-                    Pairs = yamlCategory.Pairs.Select(yamlPair => new WordPair
+                    Pairs = yamlCategory.Pairs.Select(yamlPair => 
                     {
-                        Civilian = yamlPair.Civilian,
-                        Undercover = yamlPair.Undercover
+                        // Randomly assign wordA and wordB to civilian and undercover roles
+                        var assignWordATocivilian = rng.Next(2) == 0;
+                        
+                        return new WordPair
+                        {
+                            Civilian = assignWordATocivilian ? yamlPair.WordA : yamlPair.WordB,
+                            Undercover = assignWordATocivilian ? yamlPair.WordB : yamlPair.WordA
+                        };
                     }).ToList()
                 }).ToList();
             }
