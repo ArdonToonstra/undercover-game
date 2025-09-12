@@ -68,11 +68,6 @@ namespace RoamingRoutes.Client.Services
         {
             try
             {
-                // Try several likely paths for the static YAML file. When Blazor is hosted
-                // the wwwroot contents are served from the app base address, so prefer
-                // building URIs off HttpClient.BaseAddress when available.
-                Console.WriteLine("Attempting to load WordPairs.yaml...");
-
                 var candidatePaths = new List<string>
                 {
                     "WordPairs.yaml",
@@ -98,38 +93,31 @@ namespace RoamingRoutes.Client.Services
                             requestUri = new Uri(p, UriKind.RelativeOrAbsolute);
                         }
 
-                        Console.WriteLine($"Trying YAML path: {requestUri}");
                         yamlContent = await _httpClient.GetStringAsync(requestUri.ToString());
                         if (!string.IsNullOrWhiteSpace(yamlContent))
                         {
-                            Console.WriteLine($"YAML content loaded from {requestUri}, length: {yamlContent.Length}");
                             break;
                         }
                     }
                     catch (Exception ex)
                     {
                         lastException = ex;
-                        Console.WriteLine($"Failed to load YAML from path '{p}': {ex.Message}");
                     }
                 }
 
                 if (string.IsNullOrWhiteSpace(yamlContent))
                 {
-                    // As a last-resort fallback (useful for `dotnet run` dev), try to read
-                    // the file from the local file system under the project wwwroot folder.
                     try
                     {
                         var localPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "WordPairs.yaml");
-                        Console.WriteLine($"HTTP attempts failed — trying local file path: {localPath}");
                         if (File.Exists(localPath))
                         {
                             yamlContent = await File.ReadAllTextAsync(localPath);
-                            Console.WriteLine($"Loaded YAML from local file, length: {yamlContent.Length}");
                         }
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
-                        Console.WriteLine($"Local file fallback failed: {ex.Message}");
+                        // Continue to fallback
                     }
 
                     if (string.IsNullOrWhiteSpace(yamlContent))

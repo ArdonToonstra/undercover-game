@@ -331,15 +331,6 @@
                 <p style="color: var(--text-muted); text-align: center; margin: 0;">Discuss who you think is the Undercover agent and vote!</p>
             </div>
             
-            <!-- Timer -->
-            @if (votingTimeRemaining > 0)
-            {
-                <div class="timer">
-                    <div class="timer-value">@FormatTime(votingTimeRemaining)</div>
-                    <div class="timer-label">remaining to vote</div>
-                </div>
-            }
-            
             <!-- Vote Cards -->
             <div class="vote-grid">
                 @foreach (var player in players.Where(p => p.IsActive))
@@ -431,6 +422,48 @@
             </div>
         </div>
     }
+    else if (gamePhase == GamePhase.PlayerEliminated)
+    {
+        <!-- Generic Player Eliminated Reveal Phase -->
+        <div class="card">
+            <div class="card-header">
+                <h1>❌ Player Eliminated</h1>
+                <p style="color: var(--text-muted); text-align: center; margin: 0;">@eliminatedPlayer?.Name was voted out. Their role is revealed below.</p>
+            </div>
+
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">
+                    @if (eliminatedPlayer != null)
+                    {
+                        @if (eliminatedPlayer.Role == GameConstants.PlayerRoles.Civilian)
+                        {
+                            <span>🕵️</span>
+                        }
+                        else if (eliminatedPlayer.Role == GameConstants.PlayerRoles.Undercover)
+                        {
+                            <span>🎭</span>
+                        }
+                        else if (eliminatedPlayer.Role == GameConstants.PlayerRoles.MrWhite)
+                        {
+                            <span>❓</span>
+                        }
+                        else
+                        {
+                            <span>🃏</span>
+                        }
+                    }
+                </div>
+                <h2 style="color: var(--accent-primary); margin-bottom: 0.5rem;">@GetRoleDisplayName(eliminatedPlayer?.Role ?? "")</h2>
+                <div style="background: var(--bg-glass); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-top: 1rem;">
+                    <p style="color: var(--text-muted); margin: 0;">They are out for the rest of this game.</p>
+                </div>
+            </div>
+
+            <div style="text-align: center;">
+                <button @onclick="ContinueAfterPlayerElimination" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;">Continue</button>
+            </div>
+        </div>
+    }
     else if (gamePhase == GamePhase.Results)
     {
         <!-- Results Phase -->
@@ -499,7 +532,7 @@
 
             <!-- Game Actions -->
             <div style="text-align: center; margin-top: 2rem;">
-                <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                <div style="display: flex; gap: 1rem; justify-content: center, flex-wrap: wrap;">
                     <button @onclick="NextRound" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;">
                         🎲 Next Round
                     </button>
@@ -535,15 +568,13 @@
     private WordPair? currentGameWordPair;
     
     // Discussion & Voting
-    private int discussionTimeRemaining = 0;
-    private Timer? discussionTimer;
-    private int votingTimeRemaining = 0;
-    private Timer? votingTimer;
     private string? selectedVoteTarget;
     
     // Mr. White guess
     private GamePlayer? votedOutMrWhite;
     private string mrWhiteGuess = "";
+    // Generic eliminated player (non-Mr White) for reveal phase
+    private GamePlayer? eliminatedPlayer;
     
     // Suggested players
     private List<string> suggestedNames = new();
@@ -568,6 +599,7 @@
         Voting,
         MrWhiteGuess,
         MrWhiteEliminated,
+        PlayerEliminated,
         Results
     }
 
@@ -874,28 +906,8 @@
 
     private async Task StartVoting()
     {
-        discussionTimer?.Dispose();
         gamePhase = GamePhase.Voting;
         selectedVoteTarget = null;
-        
-        // Start voting timer (5 minutes)
-        votingTimeRemaining = 300;
-        votingTimer = new Timer(async _ =>
-        {
-            votingTimeRemaining--;
-            await InvokeAsync(StateHasChanged);
-            
-            if (votingTimeRemaining <= 0)
-            {
-                votingTimer?.Dispose();
-                // Auto-submit vote or show time's up message
-                if (selectedVoteTarget != null)
-                {
-                    await SubmitVote();
-                }
-            }
-        }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
-        
         await InvokeAsync(StateHasChanged);
     }
 
@@ -909,8 +921,6 @@
     {
         if (selectedVoteTarget != null)
         {
-            votingTimer?.Dispose();
-            
             var votedPlayer = players.FirstOrDefault(p => p.Id == selectedVoteTarget && p.IsActive);
             if (votedPlayer != null)
             {
@@ -924,10 +934,9 @@
                 }
                 else
                 {
-                    // Normal voting result
-                    DetermineGameResult(votedPlayer);
-                    gamePhase = GamePhase.Results;
-                    await InvokeAsync(StateHasChanged);
+            // Eliminate the voted player (they are out for the remainder of the game)
+            votedPlayer.IsActive = false;
+            await EvaluateVictoryOrContinueAsync();
                 }
             }
         }
@@ -980,57 +989,8 @@
         votedOutMrWhite.IsActive = false;
 
         // Check if game should end (only 2 active players left, etc.)
-        if (players.Count(p => p.IsActive) <= 2)
-        {
-            // Determine winner based on remaining players
-            var remainingUndercover = players.Where(p => p.IsActive && p.Role == GameConstants.PlayerRoles.Undercover).ToList();
-            var remainingCivilians = players.Where(p => p.IsActive && p.Role == GameConstants.PlayerRoles.Civilian).ToList();
-            
-            if (remainingUndercover.Any() && remainingCivilians.Any())
-            {
-                gameResult = new GameResultDTO
-                {
-                    Winner = "Draw",
-                    Reason = "Too few players remaining to continue."
-                };
-            }
-            else if (remainingUndercover.Any())
-            {
-                gameResult = new GameResultDTO
-                {
-                    Winner = "Undercover",
-                    Reason = "All civilians eliminated!"
-                };
-                foreach (var player in remainingUndercover)
-                {
-                    player.Score++;
-                }
-            }
-            else
-            {
-                gameResult = new GameResultDTO
-                {
-                    Winner = "Civilians",
-                    Reason = "All undercover agents eliminated!"
-                };
-                foreach (var player in remainingCivilians)
-                {
-                    player.Score++;
-                }
-            }
-            
-            gamePhase = GamePhase.Results;
-        }
-        else
-        {
-            // Continue with another word sharing round
-            gamePhase = GamePhase.Discussion; // Word Sharing Phase
-            selectedVoteTarget = null;
-            votedOutMrWhite = null;
-            mrWhiteGuess = "";
-        }
-        
-        await InvokeAsync(StateHasChanged);
+    // Evaluate victory or continue
+    await EvaluateVictoryOrContinueAsync();
     }
 
     private async Task StartNewWordRound()
@@ -1038,48 +998,62 @@
         await ContinueWithoutMrWhite();
     }
 
-    private void DetermineGameResult(GamePlayer votedOutPlayer)
+    private async Task ContinueAfterPlayerElimination()
     {
-        gameResult = new GameResultDTO();
-        
-        if (votedOutPlayer.Role == GameConstants.PlayerRoles.Undercover)
+        await EvaluateVictoryOrContinueAsync();
+    }
+
+    // New unified victory evaluation method based on current active players
+    private async Task EvaluateVictoryOrContinueAsync()
+    {
+        var activeCivilians = players.Count(p => p.IsActive && p.Role == GameConstants.PlayerRoles.Civilian);
+        var activeUndercover = players.Count(p => p.IsActive && p.Role == GameConstants.PlayerRoles.Undercover);
+        var activeMrWhite = players.Count(p => p.IsActive && p.Role == GameConstants.PlayerRoles.MrWhite);
+
+        // Civilian victory: all Undercover and Mr. White eliminated
+        if (activeUndercover == 0 && activeMrWhite == 0)
         {
-            gameResult.Winner = "Civilians";
-            gameResult.Reason = "The Undercover agent was successfully identified!";
-            
-            // Award points to civilians
-            foreach (var player in players.Where(p => p.Role == GameConstants.PlayerRoles.Civilian))
+            gameResult = new GameResultDTO
             {
-                player.Score++;
+                Winner = "Civilians",
+                Reason = "All Undercover agents and Mr. White were eliminated!"
+            };
+            foreach (var civ in players.Where(p => p.Role == GameConstants.PlayerRoles.Civilian))
+            {
+                civ.Score++;
             }
+            gamePhase = GamePhase.Results;
         }
-        else if (votedOutPlayer.Role == GameConstants.PlayerRoles.Civilian)
+        // Undercover victory: civs eliminated OR parity (non-civs >= civs)
+        else if (activeCivilians == 0 || (activeUndercover + activeMrWhite) >= activeCivilians)
         {
-            gameResult.Winner = "Undercover";
-            gameResult.Reason = "A Civilian was voted out - Undercover wins!";
-            
-            // Award points to undercover players
-            foreach (var player in players.Where(p => p.Role == GameConstants.PlayerRoles.Undercover))
+            gameResult = new GameResultDTO
             {
-                player.Score++;
+                Winner = "Undercover",
+                Reason = activeCivilians == 0 ? "All civilians eliminated!" : "Undercovers can no longer be outvoted (parity reached)."
+            };
+            foreach (var u in players.Where(p => p.Role == GameConstants.PlayerRoles.Undercover || p.Role == GameConstants.PlayerRoles.MrWhite))
+            {
+                if (u.IsActive) u.Score++;
             }
+            gamePhase = GamePhase.Results;
         }
-        else // Mr. White
+        else
         {
-            gameResult.Winner = "Mr. White";
-            gameResult.Reason = "Mr. White was voted out but wins for surviving this long!";
-            
-            // Award points to Mr. White
-            foreach (var player in players.Where(p => p.Role == GameConstants.PlayerRoles.MrWhite))
-            {
-                player.Score++;
-            }
+            // Continue game: next discussion round with remaining active players using same word pair
+            selectedVoteTarget = null;
+            votedOutMrWhite = null;
+            mrWhiteGuess = "";
+            eliminatedPlayer = null;
+            gamePhase = GamePhase.Discussion;
         }
 
-        if (gameState != null)
+        if (gamePhase == GamePhase.Results && gameState != null)
         {
             gameState.Status = GameStatus.Finished;
         }
+
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task ResetGame()
@@ -1094,10 +1068,6 @@
         currentPlayerRole = null;
         currentGameWordPair = null;
         selectedVoteTarget = null;
-        discussionTimeRemaining = 0;
-        discussionTimer?.Dispose();
-        votingTimeRemaining = 0;
-        votingTimer?.Dispose();
         votedOutMrWhite = null;
         mrWhiteGuess = "";
         
@@ -1116,10 +1086,6 @@
         currentPlayerRole = null;
         currentGameWordPair = null;
         selectedVoteTarget = null;
-        discussionTimeRemaining = 0;
-        discussionTimer?.Dispose();
-        votingTimeRemaining = 0;
-        votingTimer?.Dispose();
         votedOutMrWhite = null;
         mrWhiteGuess = "";
         
@@ -1221,7 +1187,5 @@
 
     public void Dispose()
     {
-        discussionTimer?.Dispose();
-        votingTimer?.Dispose();
     }
 }
