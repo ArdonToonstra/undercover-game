@@ -107,17 +107,26 @@
                 <div class="phase-title">Role Distribution</div>
                 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 1rem;">
                     <div style="text-align: center;">
-                        <div style="width: 3rem; height: 3rem; background: var(--accent-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.5rem; color: white; font-weight: 700;">@GetCurrentCivilianCount()</div>
+                        <div style="position: relative; width: 4rem; height: 4rem; margin: 0 auto 0.5rem;">
+                            <img src="Civilian-icon.png" alt="Civilian" style="width: 100%; height: 100%; object-fit: contain;" />
+                            <div style="position: absolute; top: -10px; right: -10px; background: var(--accent-primary); color: white; border-radius: 50%; width: 1.5rem; height: 1.5rem; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; border: 2px solid white;">@GetCurrentCivilianCount()</div>
+                        </div>
                         <div style="font-weight: 600; color: var(--text-primary);">Civilians</div>
                         <div style="font-size: 0.8rem; color: var(--text-muted);">Good guys</div>
                     </div>
                     <div style="text-align: center;">
-                        <div style="width: 3rem; height: 3rem; background: var(--danger); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.5rem; color: white; font-weight: 700;">@GetCurrentUndercoverCount()</div>
+                        <div style="position: relative; width: 4rem; height: 4rem; margin: 0 auto 0.5rem;">
+                            <img src="Undercover-icon.png" alt="Undercover" style="width: 100%; height: 100%; object-fit: contain;" />
+                            <div style="position: absolute; top: -10px; right: -10px; background: var(--danger); color: white; border-radius: 50%; width: 1.5rem; height: 1.5rem; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; border: 2px solid white;">@GetCurrentUndercoverCount()</div>
+                        </div>
                         <div style="font-weight: 600; color: var(--text-primary);">Undercover</div>
                         <div style="font-size: 0.8rem; color: var(--text-muted);">Secret agent</div>
                     </div>
                     <div style="text-align: center;">
-                        <div style="width: 3rem; height: 3rem; background: var(--text-muted); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.5rem; color: white; font-weight: 700;">@GetCurrentMrWhiteCount()</div>
+                        <div style="position: relative; width: 4rem; height: 4rem; margin: 0 auto 0.5rem;">
+                            <img src="Mrwhite-icon.png" alt="Mr. White" style="width: 100%; height: 100%; object-fit: contain;" />
+                            <div style="position: absolute; top: -10px; right: -10px; background: var(--text-muted); color: white; border-radius: 50%; width: 1.5rem; height: 1.5rem; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; border: 2px solid white;">@GetCurrentMrWhiteCount()</div>
+                        </div>
                         <div style="font-weight: 600; color: var(--text-primary);">Mr. White</div>
                         <div style="font-size: 0.8rem; color: var(--text-muted);">Mystery role</div>
                     </div>
@@ -261,7 +270,17 @@
         <!-- Role Revealed -->
         <div class="card">
             <div class="card-header">
-                <h1>🔍 Your Word</h1>
+                @if (currentPlayerRole == GameConstants.PlayerRoles.MrWhite)
+                {
+                    <h1 style="display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                        <img src="Mrwhite-icon.png" alt="Mr. White" style="width: 2rem; height: 2rem; object-fit: contain;" />
+                        <span>You are Mr. White!</span>
+                    </h1>
+                }
+                else
+                {
+                    <h1>🔍 Your Word</h1>
+                }
             </div>
             
             <!-- Word Display -->
@@ -468,24 +487,24 @@
             </div>
 
             <div style="text-align: center; margin-bottom: 2rem;">
-                <div style="font-size: 3rem; margin-bottom: 1rem;">
+                <div style="margin-bottom: 1rem;">
                     @if (eliminatedPlayer != null)
                     {
                         @if (eliminatedPlayer.Role == GameConstants.PlayerRoles.Civilian)
                         {
-                            <span>🕵️</span>
+                            <img src="Civilian-icon.png" alt="Civilian" style="width: 5rem; height: 5rem; object-fit: contain;" />
                         }
                         else if (eliminatedPlayer.Role == GameConstants.PlayerRoles.Undercover)
                         {
-                            <span>🎭</span>
+                            <img src="Undercover-icon.png" alt="Undercover" style="width: 5rem; height: 5rem; object-fit: contain;" />
                         }
                         else if (eliminatedPlayer.Role == GameConstants.PlayerRoles.MrWhite)
                         {
-                            <span>❓</span>
+                            <img src="Mrwhite-icon.png" alt="Mr. White" style="width: 5rem; height: 5rem; object-fit: contain;" />
                         }
                         else
                         {
-                            <span>🃏</span>
+                            <span style="font-size: 3rem;">🃏</span>
                         }
                     }
                 </div>
@@ -512,18 +531,22 @@
             @if (gameResult != null)
             {
                 <div style="text-align: center; margin-bottom: 2rem;">
-                    <div style="font-size: 3rem; margin-bottom: 1rem;">
+                    <div style="margin-bottom: 1rem;">
                         @if (gameResult.Winner == "Civilians")
                         {
-                            <span>🕵️‍♂️</span>
+                            <img src="Civilian-icon.png" alt="Civilians Win" style="width: 5rem; height: 5rem; object-fit: contain;" />
                         }
                         else if (gameResult.Winner == "Undercover")
                         {
-                            <span>🎭</span>
+                            <img src="Undercover-icon.png" alt="Undercover Wins" style="width: 5rem; height: 5rem; object-fit: contain;" />
+                        }
+                        else if (gameResult.Winner == "Mr. White")
+                        {
+                            <img src="Mrwhite-icon.png" alt="Mr. White Wins" style="width: 5rem; height: 5rem; object-fit: contain;" />
                         }
                         else
                         {
-                            <span>❓</span>
+                            <span style="font-size: 3rem;">❓</span>
                         }
                     </div>
                     <h2 style="color: var(--accent-primary); margin-bottom: 0.5rem;">@gameResult.Winner Wins!</h2>
@@ -537,11 +560,27 @@
                         @foreach (var player in players.OrderByDescending(p => p.Score))
                         {
                             <div class="player-chip">
-                                <span class="player-name">@player.Name</span>
-                                <span class="role-badge role-@player.Role.ToLower()">
-                                    @GetRoleDisplayName(player.Role)
-                                </span>
-                                <span class="score-badge">@player.Score pts</span>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    @if (player.Role == GameConstants.PlayerRoles.Civilian)
+                                    {
+                                        <img src="Civilian-icon.png" alt="Civilian" style="width: 2rem; height: 2rem; object-fit: contain;" />
+                                    }
+                                    else if (player.Role == GameConstants.PlayerRoles.Undercover)
+                                    {
+                                        <img src="Undercover-icon.png" alt="Undercover" style="width: 2rem; height: 2rem; object-fit: contain;" />
+                                    }
+                                    else if (player.Role == GameConstants.PlayerRoles.MrWhite)
+                                    {
+                                        <img src="Mrwhite-icon.png" alt="Mr. White" style="width: 2rem; height: 2rem; object-fit: contain;" />
+                                    }
+                                    <span class="player-name">@player.Name</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <span class="role-badge role-@player.Role.ToLower()">
+                                        @GetRoleDisplayName(player.Role)
+                                    </span>
+                                    <span class="score-badge">@player.Score pts</span>
+                                </div>
                             </div>
                         }
                     </div>
