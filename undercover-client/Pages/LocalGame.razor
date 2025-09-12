@@ -994,9 +994,11 @@
                 }
                 else
                 {
-            // Eliminate the voted player (they are out for the remainder of the game)
-            votedPlayer.IsActive = false;
-            await EvaluateVictoryOrContinueAsync();
+                    // Eliminate and show role reveal card
+                    votedPlayer.IsActive = false;
+                    eliminatedPlayer = votedPlayer;
+                    gamePhase = GamePhase.PlayerEliminated;
+                    await InvokeAsync(StateHasChanged);
                 }
             }
         }
