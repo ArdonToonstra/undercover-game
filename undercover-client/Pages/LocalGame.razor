@@ -822,17 +822,35 @@
 
     private List<GamePlayer> GetSpeakingOrder()
     {
-        // Get all non-Mr. White players first, then Mr. White players
-        var nonMrWhitePlayers = players.Where(p => p.Role != GameConstants.PlayerRoles.MrWhite).ToList();
-        var mrWhitePlayers = players.Where(p => p.Role == GameConstants.PlayerRoles.MrWhite).ToList();
-        
-        // Randomize the order within each group
+        // Ensure Mr. White is not always last, but also never first.
+        // Strategy:
+        // - Shuffle non-MrWhite players
+        // - Shuffle MrWhite players
+        // - Insert MrWhite players at random positions in the non-MrWhite list
+        //   with the constraint that no MrWhite may occupy index 0.
         var random = new Random();
-        nonMrWhitePlayers = nonMrWhitePlayers.OrderBy(x => random.Next()).ToList();
-        mrWhitePlayers = mrWhitePlayers.OrderBy(x => random.Next()).ToList();
-        
-        // Combine: non-Mr. White first, then Mr. White
-        return nonMrWhitePlayers.Concat(mrWhitePlayers).ToList();
+        var nonMrWhitePlayers = players.Where(p => p.Role != GameConstants.PlayerRoles.MrWhite)
+                                       .OrderBy(_ => random.Next())
+                                       .ToList();
+        var mrWhitePlayers = players.Where(p => p.Role == GameConstants.PlayerRoles.MrWhite)
+                                     .OrderBy(_ => random.Next())
+                                     .ToList();
+
+        // If there are no non-MrWhite players, just return the list (can't enforce position)
+        if (!nonMrWhitePlayers.Any())
+        {
+            return mrWhitePlayers;
+        }
+
+        // Insert each MrWhite into a random position excluding index 0.
+        foreach (var mr in mrWhitePlayers)
+        {
+            // allowed insertion indices: 1 .. nonMrWhitePlayers.Count (inclusive) so it can end up last
+            var insertIndex = random.Next(1, nonMrWhitePlayers.Count + 1);
+            nonMrWhitePlayers.Insert(insertIndex, mr);
+        }
+
+        return nonMrWhitePlayers;
     }
 
     private async Task StartVoting()
