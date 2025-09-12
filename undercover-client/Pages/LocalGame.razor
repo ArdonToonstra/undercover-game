@@ -192,8 +192,8 @@
         <!-- Role Assignment Phase -->
         <div class="card">
             <div class="card-header">
-                <h1>� @players[currentCardIndex].Name's Turn</h1>
-                <p style="color: var(--text-muted); text-align: center; margin: 0;">Pass the device to @players[currentCardIndex].Name to pick their card</p>
+                <h1>� @((activeRoundPlayers.Count > currentCardIndex) ? activeRoundPlayers[currentCardIndex].Name : "Player")'s Turn</h1>
+                <p style="color: var(--text-muted); text-align: center; margin: 0;">Pass the device to @((activeRoundPlayers.Count > currentCardIndex) ? activeRoundPlayers[currentCardIndex].Name : "Player") to pick their card</p>
             </div>
             
             <!-- Available Cards -->
@@ -229,7 +229,7 @@
             </div>
             
             <!-- Word Display -->
-            <div style="text-align: center; margin-bottom: 3rem;">
+                <div style="text-align: center; margin-bottom: 3rem;">
                 @if (currentPlayerRole != null)
                 {
                     @if (currentPlayerRole == GameConstants.PlayerRoles.Civilian)
@@ -257,9 +257,9 @@
             </div>
 
             <!-- Continue Button -->
-            <div style="text-align: center;">
+                <div style="text-align: center;">
                 <button @onclick="ContinueToNextPlayer" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;">
-                    @if (currentCardIndex < players.Count - 1)
+                    @if (currentCardIndex < (activeRoundPlayers.Count - 1))
                     {
                         <span>Continue to Next Player</span>
                     }
@@ -342,7 +342,7 @@
             
             <!-- Vote Cards -->
             <div class="vote-grid">
-                @foreach (var player in players)
+                @foreach (var player in players.Where(p => p.IsActive))
                 {
                     <div class="vote-card @(selectedVoteTarget == player.Id ? "selected" : "")" 
                          @onclick="() => SelectVoteTarget(player.Id)">
@@ -555,6 +555,8 @@
         public string Name { get; set; } = string.Empty;
         public string Role { get; set; } = string.Empty;
         public int Score { get; set; } = 0;
+    // Whether the player is currently active in the ongoing round/game
+    public bool IsActive { get; set; } = true;
     }
     
     private enum GamePhase
@@ -723,7 +725,7 @@
                 return;
             }
 
-            // Add players to the game
+            // Add players to the game (all current players)
             foreach (var player in players.Skip(1)) // Skip the first player as they're already the host
             {
                 await LocalGameService.JoinGameAsync(gameState.GameId, new JoinGameRequestDTO { Nickname = player.Name });
@@ -754,7 +756,8 @@
         currentGameWordPair = selectedPair;
 
         // Create role distribution based on CURRENT number of players
-        var currentPlayerCount = players.Count;
+    // Only count active players for role distribution
+    var currentPlayerCount = players.Count(p => p.IsActive);
         var roles = new List<string>();
         
         // Add civilians
@@ -775,11 +778,22 @@
             roles.Add(GameConstants.PlayerRoles.MrWhite);
         }
 
-        // Shuffle roles
-        roles = roles.OrderBy(x => random.Next()).ToList();
+    // Shuffle roles
+    roles = roles.OrderBy(x => random.Next()).ToList();
 
     // Create available cards (capture currentGameWordPair as nullable)
+        // Create available cards only for active players
     availableCards = roles.Select(role => (role, (WordPair?)currentGameWordPair)).ToList();
+        
+        // Build the active round players list (players who are marked IsActive)
+        activeRoundPlayers = players.Where(p => p.IsActive).OrderBy(_ => random.Next()).ToList();
+
+        // Ensure availableCards matches number of active players
+        if (availableCards.Count > activeRoundPlayers.Count)
+        {
+            availableCards = availableCards.Take(activeRoundPlayers.Count).ToList();
+        }
+
         currentCardIndex = 0;
     }
 
@@ -790,8 +804,8 @@
             var selectedCard = availableCards[cardIndex];
             currentPlayerRole = selectedCard.Role;
             
-            // Assign role to current player
-            players[currentCardIndex].Role = selectedCard.Role;
+            // Assign role to current active round player
+            activeRoundPlayers[currentCardIndex].Role = selectedCard.Role;
             
             // Remove the selected card
             availableCards.RemoveAt(cardIndex);
@@ -805,7 +819,7 @@
     {
         currentCardIndex++;
         
-        if (currentCardIndex >= players.Count)
+    if (currentCardIndex >= activeRoundPlayers.Count)
         {
             // All players have picked cards, start discussion
             gamePhase = GamePhase.Discussion;
@@ -829,12 +843,14 @@
         // - Insert MrWhite players at random positions in the non-MrWhite list
         //   with the constraint that no MrWhite may occupy index 0.
         var random = new Random();
-        var nonMrWhitePlayers = players.Where(p => p.Role != GameConstants.PlayerRoles.MrWhite)
-                                       .OrderBy(_ => random.Next())
-                                       .ToList();
-        var mrWhitePlayers = players.Where(p => p.Role == GameConstants.PlayerRoles.MrWhite)
-                                     .OrderBy(_ => random.Next())
-                                     .ToList();
+    // Use only active players for the speaking order
+    var activePlayers = players.Where(p => p.IsActive).ToList();
+    var nonMrWhitePlayers = activePlayers.Where(p => p.Role != GameConstants.PlayerRoles.MrWhite)
+                       .OrderBy(_ => random.Next())
+                       .ToList();
+    var mrWhitePlayers = activePlayers.Where(p => p.Role == GameConstants.PlayerRoles.MrWhite)
+                     .OrderBy(_ => random.Next())
+                     .ToList();
 
         // If there are no non-MrWhite players, just return the list (can't enforce position)
         if (!nonMrWhitePlayers.Any())
@@ -852,6 +868,9 @@
 
         return nonMrWhitePlayers;
     }
+
+    // Players participating in the current round (active and in picking order)
+    private List<GamePlayer> activeRoundPlayers = new();
 
     private async Task StartVoting()
     {
@@ -892,7 +911,7 @@
         {
             votingTimer?.Dispose();
             
-            var votedPlayer = players.FirstOrDefault(p => p.Id == selectedVoteTarget);
+            var votedPlayer = players.FirstOrDefault(p => p.Id == selectedVoteTarget && p.IsActive);
             if (votedPlayer != null)
             {
                 // Check if Mr. White was voted out
@@ -957,15 +976,15 @@
     {
         if (votedOutMrWhite == null) return;
 
-        // Remove Mr. White from the game
-        players.Remove(votedOutMrWhite);
-        
-        // Check if game should end (only 2 players left, etc.)
-        if (players.Count <= 2)
+        // Mark Mr. White inactive for the remainder of this round
+        votedOutMrWhite.IsActive = false;
+
+        // Check if game should end (only 2 active players left, etc.)
+        if (players.Count(p => p.IsActive) <= 2)
         {
             // Determine winner based on remaining players
-            var remainingUndercover = players.Where(p => p.Role == GameConstants.PlayerRoles.Undercover).ToList();
-            var remainingCivilians = players.Where(p => p.Role == GameConstants.PlayerRoles.Civilian).ToList();
+            var remainingUndercover = players.Where(p => p.IsActive && p.Role == GameConstants.PlayerRoles.Undercover).ToList();
+            var remainingCivilians = players.Where(p => p.IsActive && p.Role == GameConstants.PlayerRoles.Civilian).ToList();
             
             if (remainingUndercover.Any() && remainingCivilians.Any())
             {
@@ -1105,9 +1124,12 @@
         mrWhiteGuess = "";
         
         // Reset all players to have no role assignments for the new round
+        // Also ensure any players who were marked inactive (e.g. eliminated Mr. White)
+        // are reactivated for the new round.
         foreach (var player in players)
         {
             player.Role = "";
+            player.IsActive = true;
         }
         
         // Start the new game with the same configuration
