@@ -1,6 +1,7 @@
 categories:
   - name: "Everyday Words"
     description: "Common everyday objects and concepts"
+    language: "EN"
     pairs:
       - wordA: "Coffee"
         wordB: "Tea"
@@ -53,8 +54,9 @@ categories:
       - wordA: "Watch"
         wordB: "Clock"
 
-  - name: "Dutch Words (NL)"
+  - name: "Random Dutch Words"
     description: "Nederlandse woorden voor een lokale ervaring"
+    language: "NL"
     pairs:
       - wordA: "Koffie"
         wordB: "Thee"
@@ -131,10 +133,17 @@ categories:
       - wordA: "Laarzen"
         wordB: "Schoenen"
       - wordA: "Jas"
-        wordB: "Trui"    
+        wordB: "Trui"  
+      - wordA: "Kerk"
+        wordB: "Moskee"
+      - wordA: "Bibliotheek"
+        wordB: "Boekhandel"
+      - wordA: "Meer"
+        wordB: "Zee"  
 
-  - name: "Difficult Dutch Words (NL)"
+  - name: "Difficult Dutch Words"
     description: "Uitdagende Nederlandse woorden met subtiele verschillen"
+    language: "NL"
     pairs:
       - wordA: "Gezellig"
         wordB: "Knus"
@@ -191,6 +200,7 @@ categories:
 
   - name: "Travel Words"
     description: "Travel and adventure themed words"
+    language: "EN"
     pairs:
       - wordA: "Hotel"
         wordB: "Hostel"
@@ -247,6 +257,7 @@ categories:
 
   - name: "Food & Drink"
     description: "Things you can eat and drink"
+    language: "EN"
     pairs:
       - wordA: "Wine"
         wordB: "Beer"
@@ -271,6 +282,7 @@ categories:
 
   - name: "Jobs & Professions"
     description: "Different roles in society"
+    language: "EN"
     pairs:
       - wordA: "Police Officer"
         wordB: "Firefighter"

@@ -7,7 +7,8 @@ namespace RoamingRoutes.Client.Services
 {
     public interface IWordPairClientService
     {
-        Task<List<WordPairCategory>> GetCategoriesAsync();
+        Task<List<WordPairCategory>> GetCategoriesAsync(string? languageCode = null);
+        Task<List<string>> GetAvailableLanguagesAsync();
         Task<WordPair> GetRandomPairFromCategoryAsync(string categoryName);
     }
 
@@ -22,17 +23,30 @@ namespace RoamingRoutes.Client.Services
             _jsRuntime = jsRuntime;
         }
 
-        public async Task<List<WordPairCategory>> GetCategoriesAsync()
+        public async Task<List<WordPairCategory>> GetCategoriesAsync(string? languageCode = null)
+        {
+            // Skip API call since we're using local YAML files
+            return await GetDefaultCategoriesAsync();
+        }
+
+        public async Task<List<string>> GetAvailableLanguagesAsync()
         {
             try
             {
-                var categories = await _httpClient.GetFromJsonAsync<List<WordPairCategory>>("/api/wordpairs/categories");
-                return categories ?? await GetDefaultCategoriesAsync();
+                // Get all categories to extract unique languages
+                var allCategories = await GetDefaultCategoriesAsync(); // Load from YAML without filtering
+                var languages = allCategories
+                    .Where(c => !string.IsNullOrWhiteSpace(c.Language))
+                    .Select(c => c.Language)
+                    .Distinct()
+                    .OrderBy(lang => lang)
+                    .ToList();
+                
+                return languages.Any() ? languages : new List<string> { "EN" };
             }
             catch (Exception)
             {
-                // Return default categories if API call fails
-                return await GetDefaultCategoriesAsync();
+                return new List<string> { "EN" };
             }
         }
 
@@ -141,10 +155,11 @@ namespace RoamingRoutes.Client.Services
                 }
 
                 var rng = new Random();
-                return yamlData.Categories.Select(yamlCategory => new WordPairCategory
+                var allCategories = yamlData.Categories.Select(yamlCategory => new WordPairCategory
                 {
                     Name = yamlCategory.Name,
                     Description = yamlCategory.Description,
+                    Language = yamlCategory.Language,
                     Pairs = yamlCategory.Pairs.Select(yamlPair => 
                     {
                         // Randomly assign wordA and wordB to civilian and undercover roles
@@ -157,6 +172,8 @@ namespace RoamingRoutes.Client.Services
                         };
                     }).ToList()
                 }).ToList();
+
+                return allCategories;
             }
             catch (Exception ex)
             {
@@ -168,6 +185,7 @@ namespace RoamingRoutes.Client.Services
                     {
                         Name = "Everyday Words",
                         Description = "Common everyday objects and concepts",
+                        Language = "EN",
                         Pairs = new List<WordPair>
                         {
                             new WordPair { Civilian = "Coffee", Undercover = "Tea" },

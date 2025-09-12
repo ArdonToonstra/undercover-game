@@ -10,6 +10,7 @@ namespace RoamingRoutes.Shared.Models.Games
     {
         public string Name { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
+        public string Language { get; set; } = "EN";
         public List<WordPair> Pairs { get; set; } = new List<WordPair>();
     }
 

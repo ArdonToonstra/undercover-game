@@ -1,77 +1,77 @@
-### Quick orientation — Undercover (Blazor WASM) repo (updated)
+### Quick orientation — Undercover (Blazor WASM) repo (current)
 
 Goal
 - Single-page Blazor WebAssembly client for the "Undercover" rounds game. Runtime is browser-side (local pass-and-play). Intended for static deployment (GitHub Pages) but also runnable locally with `dotnet run` during development.
 
-Snapshot (what changed)
-- The UI was redesigned into a single landing page with an improved dark theme and modern CSS system.
-- `Pages/LocalGame.razor` is the only route (`@page "/"`) and contains the full single-page UI + page-local logic.
-- Navigation/menu components were removed (no site menu). `MainLayout.razor` was simplified to a single container wrapper for the app body.
-- Styling: `wwwroot/css/app.custom.css` was overhauled (CSS variables, component classes, responsive utilities).
-- Several compile-time model mismatches were fixed in the page code so the project builds and runs locally (see "Model name notes" below).
+At-a-glance (important updates)
+- The entire app is a single-page UI in `undercover-client/Pages/LocalGame.razor` (`@page "/").` That file contains page-local UI and game logic — most behavior is implemented in that Razor file and the local services.
+- Word pairs now include a language code per category in `wwwroot/WordPairs.yaml` (e.g. `language: "EN"` or `language: "NL"`). Categories are grouped/filtered by language in the UI.
+- YAML models use neutral pair fields `wordA`/`wordB` (mapped to `YamlWordPair.WordA` / `YamlWordPair.WordB`) and the runtime randomly assigns `WordA`/`WordB` to `WordPair.Civilian` / `WordPair.Undercover` so the YAML file doesn't contain `Civilian`/`Undercover` names.
+- `Services/WordPairClientService.cs` reads `wwwroot/WordPairs.yaml` as the primary source (with a small set of hard-coded fallbacks). It attempts HTTP reads from the app base address and falls back to the local wwwroot file when necessary.
 
-Big picture
-- Project root: `undercover-client/` (net8.0 Blazor WASM).
-- UI entry: `Pages/LocalGame.razor` — single landing page and main source of UX logic.
-- Local runtime service: `Services/LocalGameService.cs` + `Services/ILocalGameService.cs` — in-memory game state, timers, and localStorage persistence via `IJSRuntime`.
-- Word data: `Services/WordPairClientService.cs` (HTTP attempt + local fallback list). Shared DTOs and models live in `Shared/Models/Games/`.
-
-Essential files to inspect first
-- `Pages/LocalGame.razor` — new UI flow, role assignment, rounds, voting. Most UI decisions live here.
-- `Services/LocalGameService.cs` — runtime state and transitions (StartGameAsync/AddPlayerAsync/AdvanceRoundAsync/Save/Load).
-- `Services/WordPairClientService.cs` — category + pair fetching; local fallback pairs are embedded here.
-- `Shared/Models/Games/*` — canonical DTOs (GameStateDTO, PlayerDTO, WordPairModels, GameConstants). Keep these stable.
-- `wwwroot/css/app.custom.css` — design system and utility classes used across the page.
-- `Program.cs` — DI registrations: `IWordPairClientService` and `ILocalGameService` are wired here.
+Project layout (what to open first)
+- `undercover-client/Pages/LocalGame.razor` — UI entry and main logic for setup, rounds, voting, and results.
+- `undercover-client/Services/WordPairClientService.cs` — loads YAML, converts YAML models into runtime `WordPairCategory` objects, and randomizes the civilian/undercover assignment.
+- `undercover-client/Shared/Models/Games/WordPairModels.cs` — runtime DTOs used by the UI (`WordPair`, `WordPairCategory`). Note: `WordPairCategory` now has `Language`.
+- `undercover-client/wwwroot/WordPairs.yaml` — the canonical set of categories and pairs. Add `language: "EN"` or `language: "NL"` per category.
+- `undercover-client/wwwroot/css/app.custom.css` — styling and component classes.
 
 Developer workflows (commands)
-- Build: run from `undercover-client/`:
+- Build (PowerShell):
   ```powershell
   cd c:\git\undercover-game\undercover-client
   dotnet build
   ```
-- Run the dev host (PowerShell):
+- Run locally (PowerShell):
   ```powershell
   cd c:\git\undercover-game\undercover-client
   dotnet run --urls "https://localhost:5001;http://localhost:5000"
   ```
-  The app will listen on `https://localhost:5001` and `http://localhost:5000` (adjust ports if already in use).
-- Preview static output: serve `undercover-client/bin/Debug/net8.0/wwwroot` with any static server for a GitHub Pages-like preview.
+  The app serves static assets from `bin/Debug/net8.0/wwwroot` during a normal build/run; open the `http://localhost:5000` or `https://localhost:5001` URL in a browser.
 
-Model name notes (important fixes made)
-- WordPair model uses properties `Civilian` and `Undercover` (not `CivilianWord`/`UndercoverWord`). `Pages/LocalGame.razor` was updated to match.
-- DTO request types are `CreateGameRequestDTO` and `JoinGameRequestDTO` (not `CreateGameDTO`/`JoinGameDTO`). The page code was aligned to use `HostNickname` / `Nickname` as required by these DTOs.
-- `GameStatus` enum values are `WaitingForPlayers`, `InProgress`, `Finished` (not `Starting`/`Completed`). UI logic was updated accordingly.
+Word pairs and YAML details
+- File: `undercover-client/wwwroot/WordPairs.yaml` — top-level `categories:` list. Each category should include:
+  - `name:` display name
+  - `description:` (optional)
+  - `language:` short code (currently `EN` or `NL`)
+  - `pairs:` list of objects with `wordA:` / `wordB:` values
 
-Integration points & important behaviors
-- localStorage: `LocalGameService.SaveToLocalAsync()` and `LoadFromLocalAsync()` persist `GameStateDTO` under key `undercover_game_session` using `IJSRuntime`.
-- Timer: `LocalGameService` uses `System.Timers.Timer` to drive discussion->voting transitions. `DisposeAsync` stops/disposes timer.
-- Word data source: `WordPairClientService` tries HTTP endpoints and falls back to embedded default categories/pairs. To add categories, update `Shared/Models/Games/WordPairModels.cs` and the service fallback.
+- Models:
+  - YAML binding types: `YamlWordPairData`, `YamlWordPairCategory` (includes `Language`), `YamlWordPair` (`WordA`/`WordB`).
+  - Runtime DTOs: `WordPairCategory` (Name, Description, Language, Pairs) and `WordPair` (Civilian, Undercover).
 
-Current status (as of 2025-09-09)
-- Build: succeeded after updating `Pages/LocalGame.razor` to match shared models. (Previously multiple compile errors due to property/DTO name mismatches; those were corrected.)
-- Run: the dev host can be started with the `dotnet run` command above; example run used `https://localhost:5001` and `http://localhost:5000`.
--- Warnings: a few C# nullability warnings were present but have been addressed in the latest commit.
+- Important behavior: the YAML uses neutral `wordA`/`wordB`. On load the service randomly assigns which side becomes the Civilian vs Undercover word at runtime. This is intentional so the same pair can be used multiple times with varied assignments.
 
-Troubleshooting
-- Port already in use: if `dotnet run` fails with "address already in use", either stop the process using that port or run with explicit URLs:
-  ```powershell
-  dotnet run --urls "https://localhost:5001;http://localhost:5000"
-  ```
-- Browser caching / stale WASM: when iterating on Blazor WASM, browsers may cache old WASM assets. Hard-refresh or clear site data, or open the app in a private/incognito window to force fresh assets.
-- HTTPS certificate warnings: self-signed dev certificates may prompt warnings. Trust the dev certificate for local development or use the HTTP URL during quick tests.
+Common runtime issues and troubleshooting
+- Error: "Failed to load YAML: Property 'civilian' not found on type 'RoamingRoutes.Client.Services.YamlWordPair'."
+  - Cause: something in the app attempted to deserialize YAML directly into a runtime `WordPair`-shaped type (which has `Civilian`/`Undercover`) instead of the neutral `YamlWordPair` (`wordA`/`wordB`). That happens when stale/old code is present (or a cached/old build is used).
+  - Fixes to try (in order):
+    1. Ensure there are no duplicate/conflicting `LocalGame.razor` files in the repo root (there was a stray `LocalGame.razor` outside `undercover-client/` previously). Remove any old root file.
+    2. Perform a clean rebuild to clear old artifacts:
+       ```powershell
+       cd c:\git\undercover-game\undercover-client
+       Remove-Item -Recurse -Force bin, obj
+       dotnet build
+       ```
+    3. Hard-refresh the browser (or open an incognito window) so the old WASM/js assets are not cached.
+    4. If you run a separate YAML test tool (like `tools/YamlReader`), update its local Yaml model types to the same shapes (it used an older model if it failed with `language` missing).
 
-Common pitfalls and tips
-- Avoid adding another `@page "/"` — only `Pages/LocalGame.razor` should define the root route.
-- When changing DTOs used by the page, update both `Shared/Models/Games/` and `Pages/LocalGame.razor` — the Razor page binds directly to those shapes.
-- If you change `Program.cs` DI registrations or `ILocalGameService` signatures, update `Pages/LocalGame.razor` accordingly since it calls the service directly.
+Note: Incognito / hard-refresh recommended
+- Blazor WebAssembly assets (blazor.boot.json, .wasm and JS) are aggressively cached. If you see a deserialization error but your server logs show the YAML parsed correctly, open the app in an Incognito/private window or hard-refresh (Ctrl+Shift+R) to force fresh client assets. This resolved the issue when port/profile switching exposed cached WASM that expected an older YAML shape.
 
-How to add a new UI feature (recipe)
-1. Add or update DTO in `Shared/Models/Games/` if the data shape is shared across pages/services.
-2. If the data affects runtime state, add operations to `ILocalGameService` and implement them in `LocalGameService.cs` (persist via SaveToLocalAsync when appropriate).
-3. Modify Razor UI in `Pages/LocalGame.razor`. Use classes from `app.custom.css`. Run `dotnet build` and then `dotnet run` to test.
+- Error: 404 for `undercover-client.styles.css` or other missing static files
+  - Cause: a reference to a stylesheet path that doesn't exist in `wwwroot` (or a build output mismatch).
+  - Fix: check `wwwroot/index.html` and `Pages/_Host` (if any) to ensure CSS files referenced exist under `wwwroot/css/`. The project ships `wwwroot/css/app.custom.css` and standard filenames under `wwwroot/css/`.
+
+Tips for editing `WordPairs.yaml`
+- When adding a category, add `language: "EN"` or `language: "NL"` on the category node.
+- Keep pair entries neutral: `wordA` / `wordB`. The UI will randomize which becomes the civilian word at runtime.
+
+Next steps and helpful checks
+- If you still see the "Property 'civilian' not found" error after a clean build and cache clear, run a grep for `YamlWordPair` and `wordA`/`wordB` to ensure the code and models are consistent.
+- If categories look missing in the UI, open the browser console and check for the YAML load logs (the service logs the HTTP path tried and the loaded content length). If the file loads but deserialization fails, the stack will point to which type failed to bind.
 
 Files to reference while coding
-- `Pages/LocalGame.razor`, `Services/LocalGameService.cs`, `Services/ILocalGameService.cs`, `Services/WordPairClientService.cs`, `Shared/Models/Games/*`, `wwwroot/css/app.custom.css`, `Program.cs`.
+- `Pages/LocalGame.razor`, `Services/LocalGameService.cs`, `Services/WordPairClientService.cs`, `Shared/Models/Games/*`, `wwwroot/WordPairs.yaml`, `wwwroot/css/app.custom.css`.
 
-If anything in this file is unclear or incomplete, mention the exact file or behavior you want expanded and I'll iterate.
+If anything in this file is unclear or incomplete, point to the exact file or behavior and I'll update this doc accordingly.

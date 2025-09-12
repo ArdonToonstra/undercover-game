@@ -16,6 +16,9 @@ namespace RoamingRoutes.Client.Services
         [YamlMember(Alias = "description")]
         public string Description { get; set; } = "";
         
+        [YamlMember(Alias = "language")]
+        public string Language { get; set; } = "EN";
+        
         [YamlMember(Alias = "pairs")]
         public List<YamlWordPair> Pairs { get; set; } = new();
     }
