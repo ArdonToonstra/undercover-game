@@ -107,21 +107,57 @@
                 <div class="phase-title">Role Distribution</div>
                 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 1rem;">
                     <div style="text-align: center;">
-                        <div style="width: 3rem; height: 3rem; background: var(--accent-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.5rem; color: white; font-weight: 700;">@GetCivilianCount()</div>
+                        <div style="width: 3rem; height: 3rem; background: var(--accent-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.5rem; color: white; font-weight: 700;">@GetCurrentCivilianCount()</div>
                         <div style="font-weight: 600; color: var(--text-primary);">Civilians</div>
                         <div style="font-size: 0.8rem; color: var(--text-muted);">Good guys</div>
                     </div>
                     <div style="text-align: center;">
-                        <div style="width: 3rem; height: 3rem; background: var(--danger); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.5rem; color: white; font-weight: 700;">@GetUndercoverCount()</div>
+                        <div style="width: 3rem; height: 3rem; background: var(--danger); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.5rem; color: white; font-weight: 700;">@GetCurrentUndercoverCount()</div>
                         <div style="font-weight: 600; color: var(--text-primary);">Undercover</div>
                         <div style="font-size: 0.8rem; color: var(--text-muted);">Secret agent</div>
                     </div>
                     <div style="text-align: center;">
-                        <div style="width: 3rem; height: 3rem; background: var(--text-muted); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.5rem; color: white; font-weight: 700;">@GetMisterWhiteCount()</div>
+                        <div style="width: 3rem; height: 3rem; background: var(--text-muted); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.5rem; color: white; font-weight: 700;">@GetCurrentMrWhiteCount()</div>
                         <div style="font-weight: 600; color: var(--text-primary);">Mr. White</div>
                         <div style="font-size: 0.8rem; color: var(--text-muted);">Mystery role</div>
                     </div>
                 </div>
+            </div>
+
+            <!-- Custom Role Configuration -->
+            <div class="form-group">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+                    <input type="checkbox" @bind="useCustomRoles" id="customRolesToggle" />
+                    <label for="customRolesToggle" class="form-label" style="margin: 0;">Customize Role Distribution</label>
+                </div>
+                
+                @if (useCustomRoles)
+                {
+                    <div style="background: var(--bg-glass); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; margin-bottom: 1rem;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div>
+                                <label class="form-label">Undercover Agents: @customUndercoverCount</label>
+                                <input type="range" min="0" max="@GetMaxUndercoverCount()" @bind="customUndercoverCount" class="form-control" style="height: 2rem;" />
+                                <div style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 0.8rem;">
+                                    <span>0</span><span>@GetMaxUndercoverCount()</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="form-label">Mr. White: @customMrWhiteCount</label>
+                                <input type="range" min="0" max="@GetMaxMrWhiteCount()" @bind="customMrWhiteCount" class="form-control" style="height: 2rem;" />
+                                <div style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 0.8rem;">
+                                    <span>0</span><span>@GetMaxMrWhiteCount()</span>
+                                </div>
+                            </div>
+                        </div>
+                        @if (!IsRoleDistributionValid())
+                        {
+                            <div style="color: var(--danger); font-size: 0.9rem; margin-top: 0.5rem; text-align: center;">
+                                ⚠️ Total non-civilians cannot exceed half the players (@(playerCount / 2))
+                            </div>
+                        }
+                    </div>
+                }
             </div>
 
             <!-- Quick Start Players -->
@@ -192,7 +228,7 @@
         <!-- Role Assignment Phase -->
         <div class="card">
             <div class="card-header">
-                <h1>� @((activeRoundPlayers.Count > currentCardIndex) ? activeRoundPlayers[currentCardIndex].Name : "Player")'s Turn</h1>
+                <h1>↩️ @((activeRoundPlayers.Count > currentCardIndex) ? activeRoundPlayers[currentCardIndex].Name : "Player")'s Turn</h1>
                 <p style="color: var(--text-muted); text-align: center; margin: 0;">Pass the device to @((activeRoundPlayers.Count > currentCardIndex) ? activeRoundPlayers[currentCardIndex].Name : "Player") to pick their card</p>
             </div>
             
@@ -557,6 +593,11 @@
     private string newPlayerName = "";
     private int playerCount = 5;
     
+    // Custom role configuration
+    private int customUndercoverCount = 1;
+    private int customMrWhiteCount = 1;
+    private bool useCustomRoles = false;
+    
     // Language and word categories
     private List<WordPairCategory> wordCategories = new();
     private string selectedCategoryName = "";
@@ -701,7 +742,10 @@
 
     private bool CanStartGame()
     {
-        return players.Count >= 3 && players.Count == playerCount && !string.IsNullOrEmpty(selectedCategoryName);
+        return players.Count >= 3 && 
+               players.Count == playerCount && 
+               !string.IsNullOrEmpty(selectedCategoryName) &&
+               IsRoleDistributionValid();
     }
 
     private async Task StartGame()
@@ -788,34 +832,50 @@
         currentGameWordPair = selectedPair;
 
         // Create role distribution based on CURRENT number of players
-    // Only count active players for role distribution
-    var currentPlayerCount = players.Count(p => p.IsActive);
+        // Only count active players for role distribution
+        var currentPlayerCount = players.Count(p => p.IsActive);
         var roles = new List<string>();
         
+        // Determine role counts based on custom or default settings
+        int civilianCount, undercoverCount, mrWhiteCount;
+        
+        if (useCustomRoles)
+        {
+            undercoverCount = customUndercoverCount;
+            mrWhiteCount = customMrWhiteCount;
+            civilianCount = currentPlayerCount - undercoverCount - mrWhiteCount;
+        }
+        else
+        {
+            civilianCount = GetCivilianCountForPlayerCount(currentPlayerCount);
+            undercoverCount = GetUndercoverCountForPlayerCount(currentPlayerCount);
+            mrWhiteCount = GetMisterWhiteCountForPlayerCount(currentPlayerCount);
+        }
+        
         // Add civilians
-        for (int i = 0; i < GetCivilianCountForPlayerCount(currentPlayerCount); i++)
+        for (int i = 0; i < civilianCount; i++)
         {
             roles.Add(GameConstants.PlayerRoles.Civilian);
         }
         
         // Add undercover
-        for (int i = 0; i < GetUndercoverCountForPlayerCount(currentPlayerCount); i++)
+        for (int i = 0; i < undercoverCount; i++)
         {
             roles.Add(GameConstants.PlayerRoles.Undercover);
         }
         
         // Add Mr. White
-        for (int i = 0; i < GetMisterWhiteCountForPlayerCount(currentPlayerCount); i++)
+        for (int i = 0; i < mrWhiteCount; i++)
         {
             roles.Add(GameConstants.PlayerRoles.MrWhite);
         }
 
-    // Shuffle roles
-    roles = roles.OrderBy(x => random.Next()).ToList();
+        // Shuffle roles
+        roles = roles.OrderBy(x => random.Next()).ToList();
 
-    // Create available cards (capture currentGameWordPair as nullable)
+        // Create available cards (capture currentGameWordPair as nullable)
         // Create available cards only for active players
-    availableCards = roles.Select(role => (role, (WordPair?)currentGameWordPair)).ToList();
+        availableCards = roles.Select(role => (role, (WordPair?)currentGameWordPair)).ToList();
         
         // Build the active round players list (players who are marked IsActive)
         activeRoundPlayers = players.Where(p => p.IsActive).OrderBy(_ => random.Next()).ToList();
@@ -1176,6 +1236,52 @@
             GameConstants.PlayerRoles.MrWhite => "Mr. White",
             _ => "Unknown"
         };
+    }
+
+    // Methods for current role distribution display
+    private int GetCurrentCivilianCount()
+    {
+        if (useCustomRoles)
+        {
+            return playerCount - customUndercoverCount - customMrWhiteCount;
+        }
+        return GetCivilianCount();
+    }
+
+    private int GetCurrentUndercoverCount()
+    {
+        return useCustomRoles ? customUndercoverCount : GetUndercoverCount();
+    }
+
+    private int GetCurrentMrWhiteCount()
+    {
+        return useCustomRoles ? customMrWhiteCount : GetMisterWhiteCount();
+    }
+
+    // Validation methods for custom role configuration
+    private bool IsRoleDistributionValid()
+    {
+        if (!useCustomRoles) return true;
+        
+        var totalNonCivilians = customUndercoverCount + customMrWhiteCount;
+        var maxNonCivilians = playerCount / 2;
+        
+        return totalNonCivilians <= maxNonCivilians && 
+               totalNonCivilians >= 0 && 
+               customUndercoverCount >= 0 && 
+               customMrWhiteCount >= 0;
+    }
+
+    private int GetMaxUndercoverCount()
+    {
+        var maxNonCivilians = playerCount / 2;
+        return Math.Max(0, maxNonCivilians - customMrWhiteCount);
+    }
+
+    private int GetMaxMrWhiteCount()
+    {
+        var maxNonCivilians = playerCount / 2;
+        return Math.Max(0, maxNonCivilians - customUndercoverCount);
     }
 
     private string FormatTime(int seconds)
