@@ -1,0 +1,41 @@
+@page "/how-to-play"
+@using Microsoft.AspNetCore.Components
+@inject NavigationManager NavigationManager
+
+<div class="container">
+    <div class="card">
+        <div class="card-header">
+            <h1>🔎 How to play Undercover</h1>
+        </div>
+
+        <div style="padding: 1.5rem;">
+            <h4 style="color: var(--accent-primary); margin-bottom: 1rem;">Overview</h4>
+            <p style="color: var(--text-muted);">Undercover is a pass-and-play social deduction game. Each player receives a secret card with either a civilian word, the undercover word, or the Mr. White role. Players take turns saying one word related to their secret word. Then the group discusses and votes to eliminate suspicious players.</p>
+
+            <h4 style="color: var(--accent-primary); margin-top: 1rem;">Step-by-step</h4>
+            <ol style="color: var(--text-muted); padding-left: 1.25rem;">
+                <li>Start a game and add players. Choose a word category.</li>
+                <li>Each player picks a card when it's their turn. Only Mr. White knows they are Mr. White; Civilians and Undercover see only their secret word.</li>
+                <li>Players take turns (see speaking order) and say one word relating to their secret word.</li>
+                <li>After everyone had a turn, start the voting phase. Vote to eliminate the player you think is Undercover or Mr. White.</li>
+                <li>If Mr. White is voted out they get a last guess: if they guess the civilian word they win the round; otherwise they are eliminated for the round.</li>
+                <li>The round continues until a winning condition is met (Civilians eliminate all Undercover & Mr. White, Undercover reach parity or eliminate all Civilians, or Mr. White guesses correctly when voted out).</li>
+            </ol>
+
+            <h4 style="color: var(--accent-primary); margin-top: 1rem;">Tips</h4>
+            <ul style="color: var(--text-muted); padding-left: 1.25rem;">
+                <li>Keep your clue short and not too revealing.</li>
+                <li>Mr. White should try to blend in — use general clues.</li>
+                <li>Discuss carefully before voting — a mistaken vote can hand the round to Undercover.</li>
+            </ul>
+
+            <div style="display:flex; gap:0.5rem; margin-top:1.25rem;">
+                <button class="btn btn-primary" @onclick='() => NavigationManager.NavigateTo("/", false)'>Back to Game</button>
+                <a class="btn btn-secondary" href="https://github.com/ArdonToonstra/undercover-game/issues" target="_blank" rel="noopener noreferrer">Report an issue</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+}

@@ -22,7 +22,7 @@
         <div class="card">
             <div class="card-header">
                 <h1>🎭 Undercover</h1>
-                <p style="color: var(--text-muted); text-align: center; margin: 0.5rem 0;">A social deduction game where players try to identify the "undercover" agent(s). Perfect for groups of 3-10 people. Test your wit and deduction skills!</p>
+                <p style="color: var(--text-muted); text-align: center; margin: 0.5rem 0;">A social deduction game where players try to identify the "undercover" agent(s). Perfect for groups of 3-10 people. Test your wit and deduction skills! <a href="/how-to-play" style="font-size:0.95rem; color:var(--accent-primary); text-decoration:none;">Don't know this game? Read it here.</a> </p>
                 <p style="color: var(--text-muted); text-align: center; margin: 0; font-size: 0.9rem;">Pass the device around to play with friends.</p>
             </div>
             
@@ -351,16 +351,7 @@
                 </div>
             </div>
 
-            <!-- Instructions -->
-            <div style="background: var(--bg-glass); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem;">
-                <h4 style="color: var(--accent-primary); margin-bottom: 1rem;">How to Play:</h4>
-                <ul style="color: var(--text-muted); margin: 0; padding-left: 1.5rem;">
-                    <li>Each player says ONE word related to their card</li>
-                    <li>Follow the speaking order shown above</li>
-                    <li>Listen carefully to spot who doesn't belong</li>
-                    <li>Mr. White needs to blend in without being too obvious</li>
-                </ul>
-            </div>
+            <!-- Instructions moved to separate HowToPlay page -->
 
             <!-- Manual Progress -->
             <div style="text-align: center;">
@@ -614,8 +605,9 @@
             </div>
         </div>
     }
-    <!-- Small feedback link -->
-    <div style="text-align:center; margin-top:0.5rem;">
+    <!-- Small links: how-to and feedback -->
+    <div style="text-align:center; margin-top:0.5rem; display:flex; flex-direction:column; gap:0.25rem; align-items:center;">
+        <a href="/how-to-play" style="font-size:0.8rem; color:var(--accent-primary); text-decoration:none;">How to play</a>
         <a href="https://github.com/ArdonToonstra/undercover-game/issues" target="_blank" rel="noopener noreferrer" style="font-size:0.8rem; color:var(--text-muted); opacity:0.85; text-decoration:none; border-bottom:1px dotted rgba(0,0,0,0.12);">
             Feedback / Report an issue
         </a>
