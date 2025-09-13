@@ -28,7 +28,6 @@
             
             <!-- Word Category Selection -->
             <div class="form-group">
-                <label class="form-label">Word Category</label>
                 @if (wordCategories.Any())
                 {
                     <div class="custom-select-wrapper">
@@ -95,7 +94,7 @@
             
             <!-- Player Count -->
             <div class="form-group">
-                <label class="form-label">Number of Players: @playerCount</label>
+                <label class="form-label">Number of players: @playerCount</label>
                 <input type="range" min="3" max="10" @bind="playerCount" @oninput="OnPlayerCountChanged" class="form-control" style="height: 2rem;" />
                 <div style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 0.8rem; margin-top: 0.5rem;">
                     <span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span>
@@ -137,7 +136,7 @@
             <div class="form-group">
                 <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
                     <input type="checkbox" @bind="useCustomRoles" id="customRolesToggle" />
-                    <label for="customRolesToggle" class="form-label" style="margin: 0;">Customize Role Distribution</label>
+                    <label for="customRolesToggle" class="form-label" style="margin: 0;">Customize role distribution</label>
                 </div>
                 
                 @if (useCustomRoles)
@@ -173,7 +172,7 @@
             @if (suggestedNames.Any())
             {
                 <div class="form-group">
-                    <label class="form-label">Quick Start - Suggested Players</label>
+                    <label class="form-label">Quick start - suggested player names</label>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.5rem;">
                         @foreach (var name in suggestedNames.Take(playerCount - players.Count))
                         {
@@ -210,7 +209,7 @@
 
             <!-- Add Player -->
             <div class="form-group">
-                <label class="form-label">Add Player</label>
+                <label class="form-label">Add player</label>
                 <div style="display: flex; gap: 0.5rem;">
                     <input @bind="newPlayerName" @onkeypress="OnPlayerNameKeyPress" placeholder="Enter player name" class="form-control" />
                     <button @onclick="AddPlayer" disabled="@(!CanAddPlayerWithName())" class="btn btn-primary">Add</button>
@@ -331,14 +330,8 @@
         <!-- Word Sharing Phase -->
         <div class="card">
             <div class="card-header">
-                <h1>� Word Sharing Phase</h1>
+                <h1>🔄 Word Sharing Phase</h1>
                 <p style="color: var(--text-muted); text-align: center; margin: 0;">Each player says a word related to their card. Follow the order below!</p>
-            </div>
-            
-            <!-- Speaking Order -->
-            <div class="phase-indicator">
-                <div class="phase-title">Speaking Order</div>
-                <div class="phase-description">Each player says one word related to their card</div>
             </div>
 
             <!-- Players List in Speaking Order -->
@@ -383,7 +376,7 @@
         <div class="card">
             <div class="card-header">
                 <h1>🗳️ Voting & Discussion</h1>
-                <p style="color: var(--text-muted); text-align: center; margin: 0;">Discuss who you think is the Undercover agent and vote!</p>
+                <p style="color: var(--text-muted); text-align: center; margin: 0;">Discuss who you think is the Undercover agent or Mr. White and vote!</p>
             </div>
             
             <!-- Vote Cards -->
@@ -418,7 +411,7 @@
             <!-- Mr. White Info -->
             <div class="phase-indicator">
                 <div class="phase-title">Final Challenge</div>
-                <div class="phase-description">If you guess correctly, you win and get 3 points!</div>
+                <div class="phase-description">If you guess correctly, you win and get 3 points.</div>
             </div>
 
             <!-- Guess Input -->
@@ -621,6 +614,12 @@
             </div>
         </div>
     }
+    <!-- Small feedback link -->
+    <div style="text-align:center; margin-top:0.5rem;">
+        <a href="https://github.com/ArdonToonstra/undercover-game/issues" target="_blank" rel="noopener noreferrer" style="font-size:0.8rem; color:var(--text-muted); opacity:0.85; text-decoration:none; border-bottom:1px dotted rgba(0,0,0,0.12);">
+            Feedback / Report an issue
+        </a>
+    </div>
 </div>
 
 @code {
@@ -631,6 +630,8 @@
     private List<GamePlayer> players = new();
     private string newPlayerName = "";
     private int playerCount = 5;
+    // When true, the initial role assignment will follow the players[] insertion order
+    private bool isFirstRound = true;
     
     // Custom role configuration
     private int customUndercoverCount = 1;
@@ -715,7 +716,8 @@
             "SneakySnail", "CleverCactus", "WilyWombat", "DeviantDonut", "MischievousMango", "CunningCupcake",
             "ArtfulAvocado", "SubtleSandwich", "ElusiveEggplant", "FoxyFalafel", "GuiltyGrape", "LurkerLemon",
             "BanditBagel", "RascalRadish", "VagabondVegetable", "OutlawOnion", "RebelRice", "PiratePickle",
-            "ThiefTaco", "MarauderMuffin", "ScoundrelSoup", "VillainVanilla", "RogueRamen", "TricksterTofu"
+            "ThiefTaco", "MarauderMuffin", "ScoundrelSoup", "VillainVanilla", "RogueRamen", "TricksterTofu", 
+            "CunningCucumber", "SlySpinach", "WilyWatermelon", "DeceptiveDoughnut", "CraftyCabbage", "SneakySushi"
         };
 
         var random = new Random();
@@ -852,6 +854,8 @@
             // Get updated game state
             gameState = await LocalGameService.GetGameStateAsync(gameState.GameId);
             
+            // Ensure the first role assignment preserves the player add order
+            isFirstRound = true;
             // Set up role assignment
             SetupRoleAssignment(selectedCategory);
             gamePhase = GamePhase.RoleAssignment;
@@ -917,7 +921,17 @@
         availableCards = roles.Select(role => (role, (WordPair?)currentGameWordPair)).ToList();
         
         // Build the active round players list (players who are marked IsActive)
-        activeRoundPlayers = players.Where(p => p.IsActive).OrderBy(_ => random.Next()).ToList();
+        // For the very first round preserve the player addition order. Subsequent rounds are randomized.
+        if (isFirstRound)
+        {
+            activeRoundPlayers = players.Where(p => p.IsActive).ToList();
+            // Only preserve order for the first assignment
+            isFirstRound = false;
+        }
+        else
+        {
+            activeRoundPlayers = players.Where(p => p.IsActive).OrderBy(_ => random.Next()).ToList();
+        }
 
         // Ensure availableCards matches number of active players
         if (availableCards.Count > activeRoundPlayers.Count)
