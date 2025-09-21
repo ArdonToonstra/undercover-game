@@ -38,20 +38,20 @@
                                 var englishCategories = wordCategories.Where(c => c.Language == "EN").ToList();
                                 var dutchCategories = wordCategories.Where(c => c.Language == "NL").ToList();
                             }
-                            
-                            @if (englishCategories.Any())
-                            {
-                                <option value="🎲 Mix All English Categories!">🎲 Mix All English Categories!</option>
-                                @foreach (var category in englishCategories)
-                                {
-                                    <option value="@category.Name">@category.Name</option>
-                                }
-                            }
-                            
+
                             @if (dutchCategories.Any())
                             {
                                 <option value="🎲 Mix All Dutch Categories!">🎲 Mix All Dutch Categories!</option>
                                 @foreach (var category in dutchCategories)
+                                {
+                                    <option value="@category.Name">@category.Name</option>
+                                }
+                            }
+
+                            @if (englishCategories.Any())
+                            {
+                                <option value="🎲 Mix All English Categories!">🎲 Mix All English Categories!</option>
+                                @foreach (var category in englishCategories)
                                 {
                                     <option value="@category.Name">@category.Name</option>
                                 }
@@ -697,9 +697,10 @@
         {
             wordCategories = await WordPairService.GetCategoriesAsync();
             if (wordCategories.Any())
-            {
-                selectedCategoryName = "🎲 Mix All English Categories!"; // Default to English mixed mode
-            }
+                    {
+                        // Prefer Dutch mixed category first if present, otherwise default to English mix
+                        selectedCategoryName = wordCategories.Any(c => c.Language == "NL") ? "🎲 Mix All Dutch Categories!" : "🎲 Mix All English Categories!";
+                    }
         }
         catch (Exception ex)
         {

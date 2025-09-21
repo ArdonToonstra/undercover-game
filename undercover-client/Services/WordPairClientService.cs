@@ -136,12 +136,6 @@ namespace RoamingRoutes.Client.Services
 
                 Console.WriteLine($"YAML parsed successfully, found {yamlData.Categories.Count} categories");
 
-                // Debug: Log each category name
-                foreach (var category in yamlData.Categories)
-                {
-                    Console.WriteLine($"Category: '{category.Name}' with {category.Pairs.Count} pairs");
-                }
-
                 var rng = new Random();
                 var allCategories = yamlData.Categories.Select(yamlCategory => new WordPairCategory
                 {
