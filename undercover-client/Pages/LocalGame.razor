@@ -4,6 +4,8 @@
 @using Microsoft.AspNetCore.Components.Web
 @inject RoamingRoutes.Client.Services.ILocalGameService LocalGameService
 @inject RoamingRoutes.Client.Services.IWordPairClientService WordPairService
+@inject NavigationManager NavigationManager
+@inject System.Net.Http.HttpClient Http
 
 @code {
     // Simple local class for game results since GameResultDTO is not in the shared models
@@ -611,6 +613,10 @@
         <a href="https://github.com/ArdonToonstra/undercover-game/issues" target="_blank" rel="noopener noreferrer" style="font-size:0.8rem; color:var(--text-muted); opacity:0.85; text-decoration:none; border-bottom:1px dotted rgba(0,0,0,0.12);">
             Feedback / Report an issue
         </a>
+        @if (!string.IsNullOrWhiteSpace(publishedVersion))
+        {
+            <div style="font-size:0.7rem; color:var(--text-muted); margin-top:0.25rem;">Version: @publishedVersion</div>
+        }
     </div>
 </div>
 
@@ -676,8 +682,11 @@
         Results
     }
 
+    private string publishedVersion = string.Empty;
+
     protected override async Task OnInitializedAsync()
     {
+        await LoadPublishedVersionAsync();
         await LoadWordCategories();
         GenerateSuggestedNames();
     }
@@ -714,6 +723,21 @@
 
         var random = new Random();
         suggestedNames = allNames.OrderBy(x => random.Next()).Take(12).ToList();
+    }
+
+    private async Task LoadPublishedVersionAsync()
+    {
+        try
+        {
+            var versionUri = new Uri(new Uri(NavigationManager.BaseUri), "version.txt");
+            var txt = await Http.GetStringAsync(versionUri);
+            publishedVersion = txt?.Trim();
+        }
+        catch
+        {
+            // ignore errors - version is optional
+            publishedVersion = string.Empty;
+        }
     }
 
     private async Task OnPlayerCountChanged(ChangeEventArgs e)

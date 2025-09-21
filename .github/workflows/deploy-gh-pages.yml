@@ -33,6 +33,12 @@ jobs:
         run: |
           sed -i 's/<base href="\/" \/>/<base href="\/undercover-game\/" \/>/g' ./publish/wwwroot/index.html
 
+      - name: Write version.txt
+        run: |
+          DEPLOY_DATE=$(date --utc +"%Y-%m-%d")
+          COMMIT_SHA=${GITHUB_SHA:0:7}
+          echo "Deployed: ${DEPLOY_DATE} - commit ${COMMIT_SHA}" > ./publish/wwwroot/version.txt
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
