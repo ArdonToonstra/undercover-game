@@ -134,13 +134,9 @@
                 </div>
             </div>
 
-            <!-- Custom Role Configuration -->
+            <!-- Custom Role Configuration (controlled by button) -->
             <div class="form-group">
-                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
-                    <input type="checkbox" @bind="useCustomRoles" id="customRolesToggle" />
-                    <label for="customRolesToggle" class="form-label" style="margin: 0;">Customize role distribution</label>
-                </div>
-                
+                @* The visible controls are shown when `useCustomRoles` is true. The toggle is now a button placed next to Quick Start below. *@
                 @if (useCustomRoles)
                 {
                     <div style="background: var(--bg-glass); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; margin-bottom: 1rem;">
@@ -170,25 +166,34 @@
                 }
             </div>
 
-            <!-- Quick Start Players -->
-            @if (suggestedNames.Any())
+            <!-- Quick Start Players and Customize Roles Toggle -->
+            @if (!showQuickStartPanel)
+            {
+                <div class="form-group" style="display:flex; gap:0.5rem; align-items:center;">
+                    <button @onclick="ShowQuickStart" class="btn btn-secondary">Quick start: add player names</button>
+                    <button @onclick="ToggleCustomRoles" class="btn btn-outline-secondary" title="Customize role distribution">⚙️ Customize roles</button>
+                </div>
+            }
+            else
             {
                 <div class="form-group">
-                    <label class="form-label">Quick start - suggested player names</label>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.5rem;">
-                        @foreach (var name in suggestedNames.Take(playerCount - players.Count))
+                    <div style="display:flex; gap:0.5rem; align-items:center; justify-content:space-between;">
+                        <label class="form-label">Suggested names</label>
+                        <div>
+                            <button @onclick="ToggleCustomRoles" class="btn btn-outline-secondary" style="font-size:0.85rem;">⚙️ Customize roles</button>
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.5rem; margin-top:0.5rem;">
+                        @foreach (var name in suggestedNamesVisible.Take(playerCount - players.Count))
                         {
                             <button @onclick="() => AddSuggestedPlayer(name)" class="btn btn-secondary" style="padding: 0.5rem;">
                                 + @name
                             </button>
                         }
                     </div>
-                    @if (suggestedNames.Count > playerCount - players.Count)
-                    {
-                        <button @onclick="GenerateSuggestedNames" class="btn btn-secondary" style="margin-top: 0.5rem; font-size: 0.9rem;">
-                            🎲 Generate different names
-                        </button>
-                    }
+                    <button @onclick="GenerateDifferentNames" class="btn btn-secondary" style="margin-top: 0.5rem; font-size: 0.9rem;">
+                        🎲 Generate different names
+                    </button>
                 </div>
             }
 
@@ -657,6 +662,11 @@
     
     // Suggested players
     private List<string> suggestedNames = new();
+    // Quick-start panel state: show compact button or visible suggested names
+    private bool showQuickStartPanel = false;
+    private List<string> suggestedNamesVisible = new();
+    // Track players added by quick-start so they can be replaced when regenerating
+    private List<string> quickStartAddedPlayerIds = new();
     
     // Local player class with role
     public class GamePlayer
@@ -724,6 +734,76 @@
 
         var random = new Random();
         suggestedNames = allNames.OrderBy(x => random.Next()).Take(12).ToList();
+        // If the quick-start panel is visible, refresh the visible set
+        if (showQuickStartPanel)
+        {
+            FillSuggestedNamesVisible();
+        }
+    }
+
+    private void ShowQuickStart()
+    {
+        // Ensure we have suggested names
+        if (!suggestedNames.Any()) GenerateSuggestedNames();
+
+        // Add suggested names automatically to fill remaining slots and track added players
+        var slots = Math.Max(0, playerCount - players.Count);
+        quickStartAddedPlayerIds.Clear();
+        for (int i = 0; i < slots; i++)
+        {
+            if (i >= suggestedNames.Count) break;
+            var name = suggestedNames[i];
+            // Add directly and track the new player's id
+            if (CanAddPlayer() && !players.Any(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
+            {
+                var newPlayer = new GamePlayer { Id = Guid.NewGuid().ToString(), Name = name };
+                players.Add(newPlayer);
+                quickStartAddedPlayerIds.Add(newPlayer.Id);
+            }
+        }
+
+        // Remove the names we just used from the suggestions so they don't reappear
+        suggestedNames = suggestedNames.Skip(Math.Min(suggestedNames.Count, slots)).ToList();
+
+        showQuickStartPanel = true;
+        StateHasChanged();
+    }
+
+    private void FillSuggestedNamesVisible()
+    {
+        var slots = Math.Max(0, playerCount - players.Count);
+        suggestedNamesVisible = suggestedNames.Take(Math.Max(0, slots)).ToList();
+        StateHasChanged();
+    }
+
+    private void GenerateDifferentNames()
+    {
+        // Remove players that were added by quick-start
+        if (quickStartAddedPlayerIds.Any())
+        {
+            players.RemoveAll(p => quickStartAddedPlayerIds.Contains(p.Id));
+            quickStartAddedPlayerIds.Clear();
+        }
+
+        // Regenerate suggested names and auto-fill again
+        GenerateSuggestedNames();
+        var slots = Math.Max(0, playerCount - players.Count);
+        for (int i = 0; i < slots; i++)
+        {
+            if (i >= suggestedNames.Count) break;
+            var name = suggestedNames[i];
+            if (CanAddPlayer() && !players.Any(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
+            {
+                var newPlayer = new GamePlayer { Id = Guid.NewGuid().ToString(), Name = name };
+                players.Add(newPlayer);
+                quickStartAddedPlayerIds.Add(newPlayer.Id);
+            }
+        }
+
+        // Remove used names from suggestedNames
+        suggestedNames = suggestedNames.Skip(Math.Min(suggestedNames.Count, slots)).ToList();
+
+        StateHasChanged();
     }
 
     private async Task LoadPublishedVersionAsync()
@@ -732,13 +812,19 @@
         {
             var versionUri = new Uri(new Uri(NavigationManager.BaseUri), "version.txt");
             var txt = await Http.GetStringAsync(versionUri);
-            publishedVersion = txt?.Trim();
+            publishedVersion = txt?.Trim() ?? string.Empty;
         }
         catch
         {
             // ignore errors - version is optional
             publishedVersion = string.Empty;
         }
+    }
+
+    private void ToggleCustomRoles()
+    {
+        useCustomRoles = !useCustomRoles;
+        StateHasChanged();
     }
 
     private async Task OnPlayerCountChanged(ChangeEventArgs e)
