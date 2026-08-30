@@ -195,6 +195,17 @@ h3 {
   cursor: not-allowed;
 }
 
+/* Accessible focus states (mouse users get the hover styles above;
+   keyboard/switch/screen-reader users need a visible focus ring too) */
+.btn:focus-visible,
+.game-card:focus-visible,
+.vote-card:focus-visible,
+.custom-select:focus-visible,
+.form-control:focus-visible {
+  outline: 3px solid var(--accent-secondary);
+  outline-offset: 2px;
+}
+
 .btn-primary {
   background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
   color: white;
@@ -236,6 +247,18 @@ h3 {
 
 .btn-secondary:hover:not(:disabled) {
   background: var(--border);
+  color: var(--text-primary);
+}
+
+.btn-outline-secondary {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+.btn-outline-secondary:hover:not(:disabled) {
+  background: var(--bg-glass);
+  border-color: var(--accent-primary);
   color: var(--text-primary);
 }
 
@@ -481,6 +504,13 @@ h3 {
 .game-card {
   position: relative;
   overflow: hidden;
+  font-family: inherit;
+  appearance: none;
+}
+
+.game-card:hover {
+  transform: scale(1.08) translateY(-8px);
+  box-shadow: 0 12px 35px rgba(139, 92, 246, 0.4) !important;
 }
 
 .game-card::before {
@@ -635,6 +665,90 @@ h3 {
   100% { transform: translateX(100%); }
 }
 
+/* Reveal gate (tap-to-reveal privacy screen for pass-and-play) */
+.reveal-gate {
+  width: 100%;
+  max-width: 320px;
+  margin: 0 auto;
+  aspect-ratio: 0.7;
+  background: linear-gradient(135deg, var(--bg-glass), rgba(139, 92, 246, 0.15));
+  border: 2px dashed var(--border);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  text-align: center;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.reveal-gate:hover,
+.reveal-gate:focus-visible {
+  border-color: var(--accent-primary);
+  background: rgba(139, 92, 246, 0.15);
+}
+
+.reveal-gate:active {
+  transform: scale(0.97);
+}
+
+.reveal-gate .reveal-icon {
+  font-size: 3rem;
+}
+
+/* Setup wizard step indicator */
+.step-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.step-dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--border);
+  transition: all 0.3s ease;
+}
+
+.step-dot.active {
+  background: var(--accent-primary);
+  width: 1.5rem;
+  border-radius: 999px;
+}
+
+.step-dot.done {
+  background: var(--success);
+}
+
+/* Status pill: remaining-player count etc. */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 1rem;
+  border-radius: 999px;
+  background: var(--bg-glass);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin: 0 auto 1.5rem;
+  width: fit-content;
+}
+
+/* Quick-start generated player tag */
+.quick-start-tag {
+  font-size: 0.75rem;
+  opacity: 0.7;
+  margin-right: 0.25rem;
+}
+
 /* Vote Cards */
 .vote-grid {
   display: grid;
@@ -654,6 +768,9 @@ h3 {
   position: relative;
   overflow: hidden;
   backdrop-filter: blur(10px);
+  font-family: inherit;
+  appearance: none;
+  width: 100%;
 }
 
 .vote-card::before {
@@ -754,22 +871,6 @@ h3 {
   100% {
     opacity: 1;
     transform: translateY(0) scale(1);
-  }
-}
-
-/* Phase transition animations */
-.phase-transition {
-  animation: phaseTransition 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@keyframes phaseTransition {
-  0% {
-    opacity: 0;
-    transform: translateX(-30px) rotateY(-10deg);
-  }
-  100% {
-    opacity: 1;
-    transform: translateX(0) rotateY(0deg);
   }
 }
 
@@ -894,42 +995,4 @@ h3 {
   box-shadow: 
     0 8px 32px rgba(0, 0, 0, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
-}
-
-/* Language Toggle Buttons */
-.language-toggle {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  font-size: 0.8rem;
-  font-weight: 500;
-  padding: 0.4rem 0.8rem;
-  transition: all 0.2s ease;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 3rem;
-}
-
-.language-toggle:hover {
-  background: var(--bg-secondary);
-  border-color: var(--accent-primary);
-  color: var(--text-primary);
-  transform: translateY(-1px);
-}
-
-.language-toggle.active {
-  background: var(--accent-primary);
-  border-color: var(--accent-primary);
-  color: white;
-  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
-}
-
-.language-toggle.active:hover {
-  background: var(--accent-primary);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
 }

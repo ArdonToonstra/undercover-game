@@ -2,10 +2,12 @@
 @using RoamingRoutes.Shared.Models.Games
 @using RoamingRoutes.Client.Services
 @using Microsoft.AspNetCore.Components.Web
+@implements IDisposable
 @inject RoamingRoutes.Client.Services.ILocalGameService LocalGameService
 @inject RoamingRoutes.Client.Services.IWordPairClientService WordPairService
 @inject NavigationManager NavigationManager
 @inject System.Net.Http.HttpClient Http
+@inject Microsoft.JSInterop.IJSRuntime JS
 
 @code {
     // Simple local class for game results since GameResultDTO is not in the shared models
@@ -27,7 +29,15 @@
                 <p style="color: var(--text-muted); text-align: center; margin: 0.5rem 0;">A social deduction game where players try to identify the "undercover" agent(s). Perfect for groups of 3-10 people. Test your wit and deduction skills! <a href="how-to-play" style="font-size:0.95rem; color:var(--accent-primary); text-decoration:none;">Don't know this game? Read it here.</a> </p>
                 <p style="color: var(--text-muted); text-align: center; margin: 0; font-size: 0.9rem;">Pass the device around to play with friends.</p>
             </div>
-            
+
+            <!-- Step indicator: keeps the setup form from being one long mobile scroll -->
+            <div class="step-indicator">
+                <div class="step-dot @(setupStep == 1 ? "active" : "done")"></div>
+                <div class="step-dot @(setupStep == 2 ? "active" : "")"></div>
+            </div>
+
+            @if (setupStep == 1)
+            {
             <!-- Word Category Selection -->
             <div class="form-group">
                 @if (wordCategories.Any())
@@ -134,25 +144,31 @@
                 </div>
             </div>
 
-            <!-- Custom Role Configuration (controlled by button) -->
+            <!-- Custom Role Configuration -->
+            <div style="text-align: center; margin: -0.5rem 0 1rem;">
+                <button @onclick="ToggleCustomRoles" class="btn btn-outline-secondary" style="font-size:0.85rem;">
+                    @(useCustomRoles ? "✓ Custom roles — tap to use default" : "⚙️ Customize roles")
+                </button>
+            </div>
             <div class="form-group">
-                @* The visible controls are shown when `useCustomRoles` is true. The toggle is now a button placed next to Quick Start below. *@
                 @if (useCustomRoles)
                 {
                     <div style="background: var(--bg-glass); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; margin-bottom: 1rem;">
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                            <div>
-                                <label class="form-label">Undercover Agents: @customUndercoverCount</label>
-                                <input type="range" min="0" max="@GetMaxUndercoverCount()" @bind="customUndercoverCount" class="form-control" style="height: 2rem;" />
-                                <div style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 0.8rem;">
-                                    <span>0</span><span>@GetMaxUndercoverCount()</span>
+                            <div style="text-align: center;">
+                                <label class="form-label">Undercover Agents</label>
+                                <div style="display: flex; align-items: center; justify-content: center; gap: 0.75rem;">
+                                    <button type="button" @onclick="DecrementUndercoverCount" disabled="@(customUndercoverCount <= 0)" class="btn btn-secondary" style="width: 2.75rem; height: 2.75rem; padding: 0; font-size: 1.4rem;" aria-label="Fewer undercover agents">−</button>
+                                    <span style="font-size: 1.5rem; font-weight: 700; min-width: 2rem;">@customUndercoverCount</span>
+                                    <button type="button" @onclick="IncrementUndercoverCount" disabled="@(customUndercoverCount >= GetMaxUndercoverCount())" class="btn btn-secondary" style="width: 2.75rem; height: 2.75rem; padding: 0; font-size: 1.4rem;" aria-label="More undercover agents">+</button>
                                 </div>
                             </div>
-                            <div>
-                                <label class="form-label">Mr. White: @customMrWhiteCount</label>
-                                <input type="range" min="0" max="@GetMaxMrWhiteCount()" @bind="customMrWhiteCount" class="form-control" style="height: 2rem;" />
-                                <div style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 0.8rem;">
-                                    <span>0</span><span>@GetMaxMrWhiteCount()</span>
+                            <div style="text-align: center;">
+                                <label class="form-label">Mr. White</label>
+                                <div style="display: flex; align-items: center; justify-content: center; gap: 0.75rem;">
+                                    <button type="button" @onclick="DecrementMrWhiteCount" disabled="@(customMrWhiteCount <= 0)" class="btn btn-secondary" style="width: 2.75rem; height: 2.75rem; padding: 0; font-size: 1.4rem;" aria-label="Fewer Mr. White">−</button>
+                                    <span style="font-size: 1.5rem; font-weight: 700; min-width: 2rem;">@customMrWhiteCount</span>
+                                    <button type="button" @onclick="IncrementMrWhiteCount" disabled="@(customMrWhiteCount >= GetMaxMrWhiteCount())" class="btn btn-secondary" style="width: 2.75rem; height: 2.75rem; padding: 0; font-size: 1.4rem;" aria-label="More Mr. White">+</button>
                                 </div>
                             </div>
                         </div>
@@ -166,23 +182,25 @@
                 }
             </div>
 
-            <!-- Quick Start Players and Customize Roles Toggle -->
+            <div style="text-align: center; margin-top: 1.5rem;">
+                <button @onclick="GoToPlayersStep" disabled="@(!CanProceedToPlayersStep())" class="btn btn-primary" style="font-size: 1.05rem; padding: 0.9rem 2rem;">
+                    Next: Add Players →
+                </button>
+            </div>
+            }
+            else
+            {
+            <!-- Quick Start Players -->
             @if (!showQuickStartPanel)
             {
                 <div class="form-group" style="display:flex; gap:0.5rem; align-items:center;">
                     <button @onclick="ShowQuickStart" class="btn btn-secondary">Quick start: add player names</button>
-                    <button @onclick="ToggleCustomRoles" class="btn btn-outline-secondary" title="Customize role distribution">⚙️ Customize roles</button>
                 </div>
             }
             else
             {
                 <div class="form-group">
-                    <div style="display:flex; gap:0.5rem; align-items:center; justify-content:space-between;">
-                        <label class="form-label">Suggested names</label>
-                        <div>
-                            <button @onclick="ToggleCustomRoles" class="btn btn-outline-secondary" style="font-size:0.85rem;">⚙️ Customize roles</button>
-                        </div>
-                    </div>
+                    <label class="form-label">Suggested names</label>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.5rem; margin-top:0.5rem;">
                         @foreach (var name in suggestedNamesVisible.Take(playerCount - players.Count))
                         {
@@ -206,7 +224,13 @@
                         @foreach (var player in players)
                         {
                             <div class="player-chip">
-                                <span class="player-name">@player.Name</span>
+                                <span class="player-name">
+                                    @if (quickStartAddedPlayerIds.Contains(player.Id))
+                                    {
+                                        <span class="quick-start-tag" title="Added by Quick Start">🎲</span>
+                                    }
+                                    @player.Name
+                                </span>
                                 <button @onclick="() => RemovePlayer(player)" class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">Remove</button>
                             </div>
                         }
@@ -214,17 +238,23 @@
                 </div>
             }
 
-            <!-- Add Player -->
+            <!-- Add Players -->
             <div class="form-group">
-                <label class="form-label">Add player</label>
-                <div style="display: flex; gap: 0.5rem;">
-                    <input @bind="newPlayerName" @onkeypress="OnPlayerNameKeyPress" placeholder="Enter player name" class="form-control" />
-                    <button @onclick="AddPlayer" disabled="@(!CanAddPlayerWithName())" class="btn btn-primary">Add</button>
-                </div>
+                <label class="form-label">Add players</label>
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0 0 0.5rem;">
+                    Type one name per line (or separate with commas) to add everyone at once — quicker than tapping "Add" per player on mobile.
+                </p>
+                <textarea @bind="bulkPlayerNamesInput" @bind:event="oninput" rows="3" placeholder="Alice&#10;Bob&#10;Charlie" class="form-control" style="resize: vertical;"></textarea>
+                <button @onclick="AddBulkPlayers" disabled="@string.IsNullOrWhiteSpace(bulkPlayerNamesInput)" class="btn btn-primary" style="margin-top: 0.5rem; width: 100%;">
+                    Add names
+                </button>
             </div>
 
             <!-- Start Game -->
-            <div style="text-align: center; margin-top: 2rem;">
+            <div style="text-align: center; margin-top: 2rem; display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
+                <button @onclick="BackToSetupStep" class="btn btn-secondary" style="font-size: 1.1rem; padding: 1rem 1.5rem;">
+                    ← Back
+                </button>
                 <button @onclick="StartGame" disabled="@(!CanStartGame())" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;">
                     @if (gameState?.Status == GameStatus.InProgress)
                     {
@@ -236,6 +266,7 @@
                     }
                 </button>
             </div>
+            }
         </div>
     }
     else if (gamePhase == GamePhase.RoleAssignment)
@@ -254,13 +285,12 @@
                     @for (int i = 0; i < availableCards.Count; i++)
                     {
                         var cardIndex = i;
-                        <div @onclick="() => PickCard(cardIndex)" 
+                        <button type="button" @onclick="() => PickCard(cardIndex)"
                              class="game-card"
-                             style="aspect-ratio: 0.7; background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)); border-radius: 16px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s ease; font-size: 3.5rem; box-shadow: 0 8px 25px rgba(139, 92, 246, 0.3); border: 2px solid rgba(255, 255, 255, 0.1);"
-                             onmouseover="this.style.transform='scale(1.08) translateY(-8px)'; this.style.boxShadow='0 12px 35px rgba(139, 92, 246, 0.4)';" 
-                             onmouseout="this.style.transform='scale(1) translateY(0)'; this.style.boxShadow='0 8px 25px rgba(139, 92, 246, 0.3)';">
-                            🃏
-                        </div>
+                             aria-label="Pick card @(cardIndex + 1)"
+                             style="aspect-ratio: 0.7; background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)); border-radius: 16px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s ease; font-size: 3.5rem; box-shadow: 0 8px 25px rgba(139, 92, 246, 0.3); border: 2px solid rgba(255, 255, 255, 0.1); padding: 0;">
+                            <span aria-hidden="true">🃏</span>
+                        </button>
                     }
                 </div>
             </div>
@@ -275,61 +305,75 @@
     {
         <!-- Role Revealed -->
         <div class="card">
-            <div class="card-header">
-                @if (currentPlayerRole == GameConstants.PlayerRoles.MrWhite)
-                {
-                    <h1 style="display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                        <img src="Mrwhite-icon.png" alt="Mr. White" style="width: 2rem; height: 2rem; object-fit: contain;" />
-                        <span>You are Mr. White!</span>
-                    </h1>
-                }
-                else
-                {
-                    <h1>🔍 Your Word</h1>
-                }
-            </div>
-            
-            <!-- Word Display -->
-                <div style="text-align: center; margin-bottom: 3rem;">
-                @if (currentPlayerRole != null)
-                {
-                    @if (currentPlayerRole == GameConstants.PlayerRoles.Civilian)
+            @if (!hasRevealedRole)
+            {
+                <div class="card-header">
+                    <h1>🃏 Card Picked</h1>
+                    <p style="color: var(--text-muted); text-align: center; margin: 0;">Make sure no one else can see your screen, then tap the card below.</p>
+                </div>
+                <button type="button" class="reveal-gate" @onclick="RevealRole">
+                    <span class="reveal-icon" aria-hidden="true">🔒</span>
+                    <span>Tap to reveal your role</span>
+                </button>
+            }
+            else
+            {
+                <div class="card-header">
+                    @if (currentPlayerRole == GameConstants.PlayerRoles.MrWhite)
                     {
-                        <div class="word-display">
-                            <div class="word-category">Your Word</div>
-                            <div class="word-text">@currentGameWordPair?.Civilian</div>
-                        </div>
-                    }
-                    else if (currentPlayerRole == GameConstants.PlayerRoles.Undercover)
-                    {
-                        <div class="word-display">
-                            <div class="word-category">Your Word</div>
-                            <div class="word-text">@currentGameWordPair?.Undercover</div>
-                        </div>
-                    }
-                    else if (currentPlayerRole == GameConstants.PlayerRoles.MrWhite)
-                    {
-                        <div class="word-display">
-                            <div class="word-category">You are Mr. White!</div>
-                            <div class="word-text">Try to blend in.</div>
-                        </div>
-                    }
-                }
-            </div>
-
-            <!-- Continue Button -->
-                <div style="text-align: center;">
-                <button @onclick="ContinueToNextPlayer" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;">
-                    @if (currentCardIndex < (activeRoundPlayers.Count - 1))
-                    {
-                        <span>Continue to Next Player</span>
+                        <h1 style="display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                            <img src="Mrwhite-icon.png" alt="Mr. White" style="width: 2rem; height: 2rem; object-fit: contain;" />
+                            <span>You are Mr. White!</span>
+                        </h1>
                     }
                     else
                     {
-                        <span>Start Word Sharing</span>
+                        <h1>🔍 Your Word</h1>
                     }
-                </button>
-            </div>
+                </div>
+
+                <!-- Word Display -->
+                <div style="text-align: center; margin-bottom: 3rem;">
+                    @if (currentPlayerRole != null)
+                    {
+                        @if (currentPlayerRole == GameConstants.PlayerRoles.Civilian)
+                        {
+                            <div class="word-display">
+                                <div class="word-category">Your Word</div>
+                                <div class="word-text">@currentGameWordPair?.Civilian</div>
+                            </div>
+                        }
+                        else if (currentPlayerRole == GameConstants.PlayerRoles.Undercover)
+                        {
+                            <div class="word-display">
+                                <div class="word-category">Your Word</div>
+                                <div class="word-text">@currentGameWordPair?.Undercover</div>
+                            </div>
+                        }
+                        else if (currentPlayerRole == GameConstants.PlayerRoles.MrWhite)
+                        {
+                            <div class="word-display">
+                                <div class="word-category">You are Mr. White!</div>
+                                <div class="word-text">Try to blend in.</div>
+                            </div>
+                        }
+                    }
+                </div>
+
+                <!-- Continue Button -->
+                <div style="text-align: center;">
+                    <button @onclick="ContinueToNextPlayer" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;">
+                        @if (currentCardIndex < (activeRoundPlayers.Count - 1))
+                        {
+                            <span>Continue to Next Player</span>
+                        }
+                        else
+                        {
+                            <span>Start Word Sharing</span>
+                        }
+                    </button>
+                </div>
+            }
         </div>
     }
     else if (gamePhase == GamePhase.Discussion)
@@ -341,19 +385,28 @@
                 <p style="color: var(--text-muted); text-align: center; margin: 0;">Each player says a word related to their card. Follow the order below!</p>
             </div>
 
-            <!-- Players List in Speaking Order -->
+            <div class="status-pill">👥 @(players.Count(p => p.IsActive)) of @(players.Count) players remaining</div>
+
+            @if (discussionSecondsLeft.HasValue)
+            {
+                <div class="timer">
+                    <div>
+                        <div class="timer-value">@FormatTime(discussionSecondsLeft.Value)</div>
+                        <div class="timer-label">Suggested discussion time — take longer if you need it</div>
+                    </div>
+                </div>
+            }
+
+            <!-- Players List in Speaking Order (fixed once when this phase starts, so it can't silently reshuffle) -->
             <div class="form-group">
                 <label class="form-label">Speaking Order</label>
                 <div class="player-list">
-                    @{
-                        var speakingOrder = GetSpeakingOrder();
-                        for (int i = 0; i < speakingOrder.Count; i++)
-                        {
-                            var player = speakingOrder[i];
-                            <div class="player-chip">
-                                <span class="player-name">@((i + 1)). @player.Name</span>
-                            </div>
-                        }
+                    @for (int i = 0; i < speakingOrder.Count; i++)
+                    {
+                        var index = i;
+                        <div class="player-chip">
+                            <span class="player-name">@((index + 1)). @speakingOrder[index].Name</span>
+                        </div>
                     }
                 </div>
             </div>
@@ -374,18 +427,21 @@
         <div class="card">
             <div class="card-header">
                 <h1>🗳️ Voting & Discussion</h1>
-                <p style="color: var(--text-muted); text-align: center; margin: 0;">Discuss who you think is the Undercover agent or Mr. White and vote!</p>
+                <p style="color: var(--text-muted); text-align: center; margin: 0;">Discuss as a group who you think is the Undercover agent or Mr. White, then have one person tap the table's choice below.</p>
             </div>
-            
+
+            <div class="status-pill">👥 @(players.Count(p => p.IsActive)) of @(players.Count) players remaining</div>
+
             <!-- Vote Cards -->
             <div class="vote-grid">
                 @foreach (var player in players.Where(p => p.IsActive))
                 {
-                    <div class="vote-card @(selectedVoteTarget == player.Id ? "selected" : "")" 
+                    <button type="button" class="vote-card @(selectedVoteTarget == player.Id ? "selected" : "")"
+                         aria-pressed="@(selectedVoteTarget == player.Id)"
                          @onclick="() => SelectVoteTarget(player.Id)">
                         <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem;">@player.Name</div>
-                        <div style="font-size: 0.9rem; color: var(--text-muted);">Click to vote</div>
-                    </div>
+                        <div style="font-size: 0.9rem; color: var(--text-muted);">Tap to select</div>
+                    </button>
                 }
             </div>
 
@@ -405,7 +461,9 @@
                 <h1>❓ Mr. White's Last Chance</h1>
                 <p style="color: var(--text-muted); text-align: center; margin: 0;">@votedOutMrWhite?.Name has been voted out! Can you guess the civilian word?</p>
             </div>
-            
+
+            <div class="status-pill">👥 @(players.Count(p => p.IsActive)) of @(players.Count) players remaining</div>
+
             <!-- Mr. White Info -->
             <div class="phase-indicator">
                 <div class="phase-title">Final Challenge</div>
@@ -438,7 +496,9 @@
                 <h1>❌ Mr. White Eliminated</h1>
                 <p style="color: var(--text-muted); text-align: center; margin: 0;">@votedOutMrWhite?.Name guessed incorrectly and has been eliminated!</p>
             </div>
-            
+
+            <div class="status-pill">👥 @(players.Count(p => p.IsActive)) of @(players.Count) players remaining</div>
+
             <!-- Elimination Info -->
             <div style="text-align: center; margin-bottom: 2rem;">
                 <div style="font-size: 3rem; margin-bottom: 1rem;">💀</div>
@@ -476,6 +536,8 @@
                 <h1>❌ Player Eliminated</h1>
                 <p style="color: var(--text-muted); text-align: center; margin: 0;">@eliminatedPlayer?.Name was voted out. Their role is revealed below.</p>
             </div>
+
+            <div class="status-pill">👥 @(players.Count(p => p.IsActive)) of @(players.Count) players remaining</div>
 
             <div style="text-align: center; margin-bottom: 2rem;">
                 <div style="margin-bottom: 1rem;">
@@ -602,7 +664,7 @@
                     <button @onclick="NextRound" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;">
                         🎲 Next Round
                     </button>
-                    <button @onclick="ResetGame" class="btn btn-secondary" style="font-size: 1.1rem; padding: 1rem 2rem;">
+                    <button @onclick="ConfirmResetGame" class="btn btn-secondary" style="font-size: 1.1rem; padding: 1rem 2rem;">
                         🔄 New Game
                     </button>
                 </div>
@@ -631,7 +693,7 @@
     private GameStateDTO? gameState;
     private GameResultDTO? gameResult;
     private List<GamePlayer> players = new();
-    private string newPlayerName = "";
+    private string bulkPlayerNamesInput = "";
     private int playerCount = 5;
     // When true, the initial role assignment will follow the players[] insertion order
     private bool isFirstRound = true;
@@ -650,9 +712,18 @@
     private int currentCardIndex = 0;
     private string? currentPlayerRole;
     private WordPair? currentGameWordPair;
-    
+    // Gate that hides the freshly-picked role/word until the current player deliberately taps to reveal it
+    private bool hasRevealedRole = false;
+
+    // Setup wizard: 1 = category/players/roles, 2 = add players & start
+    private int setupStep = 1;
+
     // Discussion & Voting
     private string? selectedVoteTarget;
+    // Speaking order is computed once per Discussion phase entry (not on every render) so it can't silently reshuffle
+    private List<GamePlayer> speakingOrder = new();
+    private int? discussionSecondsLeft;
+    private System.Timers.Timer? _discussionTimer;
     
     // Mr. White guess
     private GamePlayer? votedOutMrWhite;
@@ -846,26 +917,28 @@
         }
     }
 
-    private async Task OnPlayerNameKeyPress(KeyboardEventArgs e)
+    // Parses one or more names at once (newline- or comma-separated) - the fast path for
+    // entering a whole group's names on a phone instead of tapping "Add" per player.
+    private async Task AddBulkPlayers()
     {
-        if (e.Key == "Enter")
-        {
-            await AddPlayer();
-        }
-    }
+        if (string.IsNullOrWhiteSpace(bulkPlayerNamesInput)) return;
 
-    private async Task AddPlayer()
-    {
-        if (CanAddPlayerWithName())
+        var names = bulkPlayerNamesInput
+            .Split(new[] { '\n', '\r', ',' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(n => n.Trim())
+            .Where(n => !string.IsNullOrWhiteSpace(n));
+
+        foreach (var name in names)
         {
-            var trimmedName = newPlayerName.Trim();
-            if (!players.Any(p => p.Name.Equals(trimmedName, StringComparison.OrdinalIgnoreCase)))
+            if (!CanAddPlayer()) break;
+            if (!players.Any(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
             {
-                players.Add(new GamePlayer { Id = Guid.NewGuid().ToString(), Name = trimmedName });
-                newPlayerName = "";
-                await InvokeAsync(StateHasChanged);
+                players.Add(new GamePlayer { Id = Guid.NewGuid().ToString(), Name = name });
             }
         }
+
+        bulkPlayerNamesInput = "";
+        await InvokeAsync(StateHasChanged);
     }
 
     private void RemovePlayer(GamePlayer player)
@@ -877,11 +950,6 @@
     private bool CanAddPlayer()
     {
         return players.Count < playerCount;
-    }
-
-    private bool CanAddPlayerWithName()
-    {
-        return players.Count < playerCount && !string.IsNullOrWhiteSpace(newPlayerName);
     }
 
     private bool CanStartGame()
@@ -1057,20 +1125,31 @@
             
             // Remove the selected card
             availableCards.RemoveAt(cardIndex);
-            
+
+            hasRevealedRole = false;
             gamePhase = GamePhase.RoleRevealed;
             await InvokeAsync(StateHasChanged);
         }
     }
 
+    // The current player deliberately taps to reveal their role/word, instead of it
+    // appearing the instant a card is picked (reduces the chance of it being glimpsed
+    // while the device is still being handled/passed).
+    private async Task RevealRole()
+    {
+        hasRevealedRole = true;
+        await VibrateAsync(30);
+        await InvokeAsync(StateHasChanged);
+    }
+
     private async Task ContinueToNextPlayer()
     {
         currentCardIndex++;
-        
+
     if (currentCardIndex >= activeRoundPlayers.Count)
         {
             // All players have picked cards, start discussion
-            gamePhase = GamePhase.Discussion;
+            EnterDiscussionPhase();
         }
         else
         {
@@ -1078,8 +1157,63 @@
             gamePhase = GamePhase.RoleAssignment;
             currentPlayerRole = null;
         }
-        
+
         await InvokeAsync(StateHasChanged);
+    }
+
+    // Speaking order (and the discussion timer) are fixed once, here, rather than being
+    // recomputed on every render of the Discussion view - otherwise Mr. White's position
+    // could silently change if the page re-rendered for any reason.
+    private void EnterDiscussionPhase()
+    {
+        speakingOrder = GetSpeakingOrder();
+        gamePhase = GamePhase.Discussion;
+        StartDiscussionTimer();
+    }
+
+    private void StartDiscussionTimer()
+    {
+        StopDiscussionTimer();
+        discussionSecondsLeft = GameConstants.GameConfig.DiscussionTimeSeconds;
+        _discussionTimer = new System.Timers.Timer(1000);
+        _discussionTimer.AutoReset = true;
+        _discussionTimer.Elapsed += (s, e) =>
+        {
+            InvokeAsync(() =>
+            {
+                if (discussionSecondsLeft is > 0)
+                {
+                    discussionSecondsLeft--;
+                }
+                else
+                {
+                    StopDiscussionTimer();
+                }
+                StateHasChanged();
+            });
+        };
+        _discussionTimer.Start();
+    }
+
+    private void StopDiscussionTimer()
+    {
+        _discussionTimer?.Stop();
+        _discussionTimer?.Dispose();
+        _discussionTimer = null;
+    }
+
+    // Best-effort haptic feedback; the Vibration API is unsupported on some browsers
+    // (notably iOS Safari) where it silently no-ops rather than throwing, but we guard anyway.
+    private async Task VibrateAsync(int milliseconds)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.vibrate", milliseconds);
+        }
+        catch
+        {
+            // ignore - haptics are a nice-to-have, never block gameplay on them
+        }
     }
 
     private List<GamePlayer> GetSpeakingOrder()
@@ -1122,6 +1256,7 @@
 
     private async Task StartVoting()
     {
+        StopDiscussionTimer();
         gamePhase = GamePhase.Voting;
         selectedVoteTarget = null;
         await InvokeAsync(StateHasChanged);
@@ -1154,6 +1289,7 @@
                     votedPlayer.IsActive = false;
                     eliminatedPlayer = votedPlayer;
                     gamePhase = GamePhase.PlayerEliminated;
+                    await VibrateAsync(80);
                     await InvokeAsync(StateHasChanged);
                 }
             }
@@ -1187,15 +1323,17 @@
             
             // Award 3 points to Mr. White
             votedOutMrWhite.Score += 3;
-            
+
             gamePhase = GamePhase.Results;
+            await VibrateAsync(200);
         }
         else
         {
             // Mr. White guessed wrong - show elimination phase
             gamePhase = GamePhase.MrWhiteEliminated;
+            await VibrateAsync(80);
         }
-        
+
         await InvokeAsync(StateHasChanged);
     }
 
@@ -1263,32 +1401,50 @@
             votedOutMrWhite = null;
             mrWhiteGuess = "";
             eliminatedPlayer = null;
-            gamePhase = GamePhase.Discussion;
+            EnterDiscussionPhase();
         }
 
-        if (gamePhase == GamePhase.Results && gameState != null)
+        if (gamePhase == GamePhase.Results)
         {
-            gameState.Status = GameStatus.Finished;
+            if (gameState != null)
+            {
+                gameState.Status = GameStatus.Finished;
+            }
+            await VibrateAsync(200);
         }
 
         await InvokeAsync(StateHasChanged);
     }
 
+    // "New Game" discards all players and scores, so guard it behind a confirmation -
+    // a stray tap shouldn't be able to wipe out an in-progress or just-finished game.
+    private async Task ConfirmResetGame()
+    {
+        var confirmed = await JS.InvokeAsync<bool>("confirm", "Start a new game? This clears all players and scores.");
+        if (confirmed)
+        {
+            await ResetGame();
+        }
+    }
+
     private async Task ResetGame()
     {
+        StopDiscussionTimer();
         gamePhase = GamePhase.Setup;
+        setupStep = 1;
         gameState = null;
         gameResult = null;
         players.Clear();
-        newPlayerName = "";
+        bulkPlayerNamesInput = "";
         availableCards.Clear();
         currentCardIndex = 0;
         currentPlayerRole = null;
         currentGameWordPair = null;
+        hasRevealedRole = false;
         selectedVoteTarget = null;
         votedOutMrWhite = null;
         mrWhiteGuess = "";
-        
+
         GenerateSuggestedNames();
         await InvokeAsync(StateHasChanged);
     }
@@ -1296,6 +1452,7 @@
     private async Task NextRound()
     {
         // Keep the same players and configuration, but start a new round
+        StopDiscussionTimer();
         gamePhase = GamePhase.RoleAssignment;
         gameState = null;
         gameResult = null;
@@ -1303,10 +1460,11 @@
         currentCardIndex = 0;
         currentPlayerRole = null;
         currentGameWordPair = null;
+        hasRevealedRole = false;
         selectedVoteTarget = null;
         votedOutMrWhite = null;
         mrWhiteGuess = "";
-        
+
         // Reset all players to have no role assignments for the new round
         // Also ensure any players who were marked inactive (e.g. eliminated Mr. White)
         // are reactivated for the new round.
@@ -1442,6 +1600,28 @@
         return Math.Max(0, maxNonCivilians - customUndercoverCount);
     }
 
+    // Stepper controls for the custom role counts - easier to tap precisely on mobile
+    // than dragging a range slider across a 0-5-ish span.
+    private void IncrementUndercoverCount()
+    {
+        if (customUndercoverCount < GetMaxUndercoverCount()) customUndercoverCount++;
+    }
+
+    private void DecrementUndercoverCount()
+    {
+        if (customUndercoverCount > 0) customUndercoverCount--;
+    }
+
+    private void IncrementMrWhiteCount()
+    {
+        if (customMrWhiteCount < GetMaxMrWhiteCount()) customMrWhiteCount++;
+    }
+
+    private void DecrementMrWhiteCount()
+    {
+        if (customMrWhiteCount > 0) customMrWhiteCount--;
+    }
+
     private string FormatTime(int seconds)
     {
         var minutes = seconds / 60;
@@ -1449,7 +1629,27 @@
         return $"{minutes:D2}:{remainingSeconds:D2}";
     }
 
+    // Setup wizard navigation (splits what used to be one long scrolling form into two steps)
+    private bool CanProceedToPlayersStep()
+    {
+        return !string.IsNullOrEmpty(selectedCategoryName) && IsRoleDistributionValid();
+    }
+
+    private void GoToPlayersStep()
+    {
+        if (!CanProceedToPlayersStep()) return;
+        setupStep = 2;
+        StateHasChanged();
+    }
+
+    private void BackToSetupStep()
+    {
+        setupStep = 1;
+        StateHasChanged();
+    }
+
     public void Dispose()
     {
+        StopDiscussionTimer();
     }
 }
