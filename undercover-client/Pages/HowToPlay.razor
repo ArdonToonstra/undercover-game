@@ -5,42 +5,43 @@
 <div class="container">
     <div class="card">
         <div class="card-header">
+            <p class="eyebrow">The rules</p>
             <h1>🔎 How to play Undercover</h1>
         </div>
 
-        <div style="padding: 1.5rem;">
-            <h4 style="color: var(--accent-primary); margin-bottom: 1rem;">Overview</h4>
-            <p style="color: var(--text-muted);">Undercover is a pass-and-play social deduction game. Each player receives a secret card with either a civilian word, the undercover word, or the Mr. White role. Players take turns saying one word related to their secret word. Then the group discusses and votes to eliminate suspicious players.</p>
+        <div class="prose">
+            <h4>Overview</h4>
+            <p>Undercover is a pass-and-play social deduction game. Each player gets a secret card: most hold the civilian word, one or more hold a similar-but-different undercover word, and Mr. White gets no word at all. Players take turns saying one word linked to their secret, then the group discusses and votes someone out.</p>
 
-            <h4 style="color: var(--accent-primary); margin-top: 1rem;">Step-by-step</h4>
-            <ol style="color: var(--text-muted); padding-left: 1.25rem;">
-                <li>Start a game and add players. Choose a word category.</li>
-                <li>Each player picks a card when it's their turn. Only Mr. White knows they are Mr. White; Civilians and Undercover see only their secret word.</li>
-                <li>Players take turns (see speaking order) and say one word relating to their secret word.</li>
-                <li>After everyone had a turn, start the voting phase. Vote to eliminate the player you think is Undercover or Mr. White.</li>
-                <li>If Mr. White is voted out they get a last guess: if they guess the civilian word they win the round; otherwise they are eliminated for the round.</li>
-                <li>The round continues until a winning condition is met (Civilians eliminate all Undercover & Mr. White, Undercover reach parity or eliminate all Civilians, or Mr. White guesses correctly when voted out).</li>
+            <h4>Step by step</h4>
+            <ol>
+                <li>Pick a word category, set the number of players, and add everyone's name.</li>
+                <li>Pass the device around. Each player picks a card and reveals it privately — only Mr. White is told they are Mr. White; civilians and undercover just see a word.</li>
+                <li>Following the speaking order, everyone says one word relating to their secret word.</li>
+                <li>After everyone has spoken, start voting. The group votes out the player they think is Undercover or Mr. White.</li>
+                <li>If Mr. White is voted out, they get one guess at the civilian word: right and they win the round, wrong and they're eliminated.</li>
+                <li>Play continues until the civilians eliminate every Undercover and Mr. White, the Undercover reach parity, or Mr. White guesses correctly.</li>
             </ol>
 
-            <h4 style="color: var(--accent-primary); margin-top: 1rem;">Scoring</h4>
-            <ul style="color: var(--text-muted); padding-left: 1.25rem;">
-                <li>If the Civilians win, every surviving Civilian gets <strong>+1 point</strong>.</li>
-                <li>If Undercover/Mr. White win, every surviving Undercover agent or Mr. White gets <strong>+1 point</strong>.</li>
-                <li>If Mr. White is voted out and correctly guesses the civilian word, they win the round solo and get <strong>+3 points</strong>.</li>
-                <li>Scores add up across "Next Round" within the same game and reset with "New Game".</li>
+            <h4>Scoring</h4>
+            <ul>
+                <li>Civilians win: every surviving Civilian gets <strong>+1 point</strong>.</li>
+                <li>Undercover / Mr. White win: every surviving Undercover or Mr. White gets <strong>+1 point</strong>.</li>
+                <li>Mr. White is voted out and guesses the civilian word: they win the round solo for <strong>+3 points</strong>.</li>
+                <li>Scores add up across "Next round" and reset with "New game".</li>
             </ul>
 
-            <h4 style="color: var(--accent-primary); margin-top: 1rem;">Tips</h4>
-            <ul style="color: var(--text-muted); padding-left: 1.25rem;">
+            <h4>Tips</h4>
+            <ul>
                 <li>Keep your clue short and not too revealing.</li>
-                <li>Mr. White should try to blend in — use general clues.</li>
-                <li>Discuss carefully before voting — a mistaken vote can hand the round to Undercover.</li>
+                <li>Mr. White should stay general and echo the mood of the room.</li>
+                <li>Discuss before you vote — one bad vote can hand the round to the Undercover.</li>
             </ul>
+        </div>
 
-            <div style="display:flex; gap:0.5rem; margin-top:1.25rem;">
-                <button class="btn btn-primary" @onclick='() => NavigationManager.NavigateTo(NavigationManager.BaseUri, false)'>Back to Game</button>
-                <a class="btn btn-secondary" href="https://github.com/ArdonToonstra/undercover-game/issues" target="_blank" rel="noopener noreferrer">Report an issue</a>
-            </div>
+        <div class="action-bar">
+            <a class="btn btn-secondary btn-lg" href="https://github.com/ArdonToonstra/undercover-game/issues" target="_blank" rel="noopener noreferrer">Report an issue</a>
+            <button class="btn btn-primary btn-lg" @onclick='() => NavigationManager.NavigateTo(NavigationManager.BaseUri, false)'>Back to game</button>
         </div>
     </div>
 </div>

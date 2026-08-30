@@ -19,15 +19,15 @@
 }
 
 <div class="container">
-    
+
     @if (gamePhase == GamePhase.Setup)
     {
         <!-- Game Setup -->
         <div class="card">
             <div class="card-header">
                 <h1>🎭 Undercover</h1>
-                <p style="color: var(--text-muted); text-align: center; margin: 0.5rem 0;">A social deduction game where players try to identify the "undercover" agent(s). Perfect for groups of 3-10 people. Test your wit and deduction skills! <a href="how-to-play" style="font-size:0.95rem; color:var(--accent-primary); text-decoration:none;">Don't know this game? Read it here.</a> </p>
-                <p style="color: var(--text-muted); text-align: center; margin: 0; font-size: 0.9rem;">Pass the device around to play with friends.</p>
+                <p class="lead">A pass-and-play word game of bluff and deduction for 3–10 players. Everyone gets a secret word — except the ones who don't.</p>
+                <p class="subtle">New to the game? <a href="how-to-play" class="text-link">Read the rules</a></p>
             </div>
 
             <!-- Step indicator: keeps the setup form from being one long mobile scroll -->
@@ -40,10 +40,11 @@
             {
             <!-- Word Category Selection -->
             <div class="form-group">
+                <label class="form-label" for="category-select">Word category</label>
                 @if (wordCategories.Any())
                 {
                     <div class="custom-select-wrapper">
-                        <select @bind="selectedCategoryName" class="custom-select">
+                        <select id="category-select" @bind="selectedCategoryName" class="custom-select">
                             @{
                                 var englishCategories = wordCategories.Where(c => c.Language == "EN").ToList();
                                 var dutchCategories = wordCategories.Where(c => c.Language == "NL").ToList();
@@ -67,22 +68,22 @@
                                 }
                             }
                         </select>
-                        <div class="select-arrow">▼</div>
+                        <div class="select-arrow" aria-hidden="true">▼</div>
                     </div>
                     @if (!string.IsNullOrEmpty(selectedCategoryName))
                     {
                         @if (selectedCategoryName == "🎲 Mix All English Categories!")
                         {
                             <div class="category-info mixed">
-                                <p style="color: var(--accent-primary); font-size: 0.9rem; margin-bottom: 0.5rem; font-weight: 600;">All English categories combined for maximum variety!</p>
-                                <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0;">@wordCategories.Where(c => c.Language == "EN").Sum(c => c.Pairs.Count) word pairs available</p>
+                                <p class="headline">All English categories combined for maximum variety!</p>
+                                <p class="count">@wordCategories.Where(c => c.Language == "EN").Sum(c => c.Pairs.Count) word pairs available</p>
                             </div>
                         }
                         else if (selectedCategoryName == "🎲 Mix All Dutch Categories!")
                         {
                             <div class="category-info mixed">
-                                <p style="color: var(--accent-primary); font-size: 0.9rem; margin-bottom: 0.5rem; font-weight: 600;">Alle Nederlandse categorieën gecombineerd voor maximale variatie!</p>
-                                <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0;">@wordCategories.Where(c => c.Language == "NL").Sum(c => c.Pairs.Count) woordparen beschikbaar</p>
+                                <p class="headline">Alle Nederlandse categorieën gecombineerd voor maximale variatie!</p>
+                                <p class="count">@wordCategories.Where(c => c.Language == "NL").Sum(c => c.Pairs.Count) woordparen beschikbaar</p>
                             </div>
                         }
                         else
@@ -91,8 +92,8 @@
                             @if (selectedCategory != null)
                             {
                                 <div class="category-info">
-                                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.5rem;">@selectedCategory.Description</p>
-                                    <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0;">@selectedCategory.Pairs.Count word pairs available</p>
+                                    <p>@selectedCategory.Description</p>
+                                    <p class="count">@selectedCategory.Pairs.Count word pairs available</p>
                                 </div>
                             }
                         }
@@ -100,116 +101,129 @@
                 }
                 else
                 {
-                    <div style="color: var(--text-muted); font-size: 0.9rem;">Loading word categories...</div>
+                    <div class="category-info">Loading word categories…</div>
                 }
             </div>
-            
+
             <!-- Player Count -->
             <div class="form-group">
-                <label class="form-label">Number of players: @playerCount</label>
-                <input type="range" min="3" max="10" @bind="playerCount" @oninput="OnPlayerCountChanged" class="form-control" style="height: 2rem;" />
-                <div style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 0.8rem; margin-top: 0.5rem;">
+                <div class="slider-head">
+                    <label class="form-label" for="player-count">Number of players</label>
+                    <span class="slider-value">@playerCount</span>
+                </div>
+                <input id="player-count" type="range" min="3" max="10" @bind="playerCount" @oninput="OnPlayerCountChanged" aria-label="Number of players" />
+                <div class="slider-scale" aria-hidden="true">
                     <span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span>
                 </div>
             </div>
 
             <!-- Role Distribution -->
-            <div class="phase-indicator">
-                <div class="phase-title">Role Distribution</div>
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 1rem;">
-                    <div style="text-align: center;">
-                        <div style="position: relative; width: 4rem; height: 4rem; margin: 0 auto 0.5rem;">
-                            <img src="Civilian-icon.png" alt="Civilian" style="width: 100%; height: 100%; object-fit: contain;" />
-                            <div style="position: absolute; top: -10px; right: -10px; background: var(--accent-primary); color: white; border-radius: 50%; width: 1.5rem; height: 1.5rem; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; border: 2px solid white;">@GetCurrentCivilianCount()</div>
+            <div class="form-group">
+                <label class="form-label">Roles in play</label>
+                <div class="role-grid">
+                    <div class="role-tile">
+                        <div class="role-tile-icon">
+                            <img src="Civilian-icon.png" alt="" />
+                            <div class="role-count civilian">@GetCurrentCivilianCount()</div>
                         </div>
-                        <div style="font-weight: 600; color: var(--text-primary);">Civilians</div>
-                        <div style="font-size: 0.8rem; color: var(--text-muted);">Good guys</div>
+                        <div class="role-tile-name">Civilians</div>
+                        <div class="role-tile-desc">Same word</div>
                     </div>
-                    <div style="text-align: center;">
-                        <div style="position: relative; width: 4rem; height: 4rem; margin: 0 auto 0.5rem;">
-                            <img src="Undercover-icon.png" alt="Undercover" style="width: 100%; height: 100%; object-fit: contain;" />
-                            <div style="position: absolute; top: -10px; right: -10px; background: var(--danger); color: white; border-radius: 50%; width: 1.5rem; height: 1.5rem; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; border: 2px solid white;">@GetCurrentUndercoverCount()</div>
+                    <div class="role-tile">
+                        <div class="role-tile-icon">
+                            <img src="Undercover-icon.png" alt="" />
+                            <div class="role-count undercover">@GetCurrentUndercoverCount()</div>
                         </div>
-                        <div style="font-weight: 600; color: var(--text-primary);">Undercover</div>
-                        <div style="font-size: 0.8rem; color: var(--text-muted);">Secret agent</div>
+                        <div class="role-tile-name">Undercover</div>
+                        <div class="role-tile-desc">Similar word</div>
                     </div>
-                    <div style="text-align: center;">
-                        <div style="position: relative; width: 4rem; height: 4rem; margin: 0 auto 0.5rem;">
-                            <img src="Mrwhite-icon.png" alt="Mr. White" style="width: 100%; height: 100%; object-fit: contain;" />
-                            <div style="position: absolute; top: -10px; right: -10px; background: var(--text-muted); color: white; border-radius: 50%; width: 1.5rem; height: 1.5rem; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; border: 2px solid white;">@GetCurrentMrWhiteCount()</div>
+                    <div class="role-tile">
+                        <div class="role-tile-icon">
+                            <img src="Mrwhite-icon.png" alt="" />
+                            <div class="role-count mrwhite">@GetCurrentMrWhiteCount()</div>
                         </div>
-                        <div style="font-weight: 600; color: var(--text-primary);">Mr. White</div>
-                        <div style="font-size: 0.8rem; color: var(--text-muted);">Mystery role</div>
+                        <div class="role-tile-name">Mr. White</div>
+                        <div class="role-tile-desc">No word</div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Custom Role Configuration -->
-            <div style="text-align: center; margin: -0.5rem 0 1rem;">
-                <button @onclick="ToggleCustomRoles" class="btn btn-outline-secondary" style="font-size:0.85rem;">
-                    @(useCustomRoles ? "✓ Custom roles — tap to use default" : "⚙️ Customize roles")
-                </button>
-            </div>
-            <div class="form-group">
+                <!-- Custom Role Configuration -->
+                <div class="center mt-1">
+                    <button @onclick="ToggleCustomRoles" class="btn btn-outline-secondary btn-sm @(useCustomRoles ? "is-on" : "")">
+                        @(useCustomRoles ? "✓ Custom roles — tap for default" : "⚙️ Customise roles")
+                    </button>
+                </div>
+
                 @if (useCustomRoles)
                 {
-                    <div style="background: var(--bg-glass); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; margin-bottom: 1rem;">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                            <div style="text-align: center;">
-                                <label class="form-label">Undercover Agents</label>
-                                <div style="display: flex; align-items: center; justify-content: center; gap: 0.75rem;">
-                                    <button type="button" @onclick="DecrementUndercoverCount" disabled="@(customUndercoverCount <= 0)" class="btn btn-secondary" style="width: 2.75rem; height: 2.75rem; padding: 0; font-size: 1.4rem;" aria-label="Fewer undercover agents">−</button>
-                                    <span style="font-size: 1.5rem; font-weight: 700; min-width: 2rem;">@customUndercoverCount</span>
-                                    <button type="button" @onclick="IncrementUndercoverCount" disabled="@(customUndercoverCount >= GetMaxUndercoverCount())" class="btn btn-secondary" style="width: 2.75rem; height: 2.75rem; padding: 0; font-size: 1.4rem;" aria-label="More undercover agents">+</button>
+                    <div class="stepper-panel">
+                        <div class="stepper-grid">
+                            <div class="stepper">
+                                <label class="form-label">Undercover</label>
+                                <div class="stepper-controls">
+                                    <button type="button" @onclick="DecrementUndercoverCount" disabled="@(customUndercoverCount <= 0)" class="btn btn-secondary btn-step" aria-label="Fewer undercover agents">−</button>
+                                    <span class="stepper-value">@customUndercoverCount</span>
+                                    <button type="button" @onclick="IncrementUndercoverCount" disabled="@(customUndercoverCount >= GetMaxUndercoverCount())" class="btn btn-secondary btn-step" aria-label="More undercover agents">+</button>
                                 </div>
                             </div>
-                            <div style="text-align: center;">
+                            <div class="stepper">
                                 <label class="form-label">Mr. White</label>
-                                <div style="display: flex; align-items: center; justify-content: center; gap: 0.75rem;">
-                                    <button type="button" @onclick="DecrementMrWhiteCount" disabled="@(customMrWhiteCount <= 0)" class="btn btn-secondary" style="width: 2.75rem; height: 2.75rem; padding: 0; font-size: 1.4rem;" aria-label="Fewer Mr. White">−</button>
-                                    <span style="font-size: 1.5rem; font-weight: 700; min-width: 2rem;">@customMrWhiteCount</span>
-                                    <button type="button" @onclick="IncrementMrWhiteCount" disabled="@(customMrWhiteCount >= GetMaxMrWhiteCount())" class="btn btn-secondary" style="width: 2.75rem; height: 2.75rem; padding: 0; font-size: 1.4rem;" aria-label="More Mr. White">+</button>
+                                <div class="stepper-controls">
+                                    <button type="button" @onclick="DecrementMrWhiteCount" disabled="@(customMrWhiteCount <= 0)" class="btn btn-secondary btn-step" aria-label="Fewer Mr. White">−</button>
+                                    <span class="stepper-value">@customMrWhiteCount</span>
+                                    <button type="button" @onclick="IncrementMrWhiteCount" disabled="@(customMrWhiteCount >= GetMaxMrWhiteCount())" class="btn btn-secondary btn-step" aria-label="More Mr. White">+</button>
                                 </div>
                             </div>
                         </div>
                         @if (!IsRoleDistributionValid())
                         {
-                            <div style="color: var(--danger); font-size: 0.9rem; margin-top: 0.5rem; text-align: center;">
-                                ⚠️ Total non-civilians cannot exceed half the players (@(playerCount / 2))
+                            <div class="form-error" role="alert">
+                                ⚠️ Non-civilians can't outnumber half the players (@(playerCount / 2))
                             </div>
                         }
                     </div>
                 }
             </div>
 
-            <div style="text-align: center; margin-top: 1.5rem;">
-                <button @onclick="GoToPlayersStep" disabled="@(!CanProceedToPlayersStep())" class="btn btn-primary" style="font-size: 1.05rem; padding: 0.9rem 2rem;">
-                    Next: Add Players →
+            <div class="action-bar">
+                <button @onclick="GoToPlayersStep" disabled="@(!CanProceedToPlayersStep())" class="btn btn-primary btn-lg">
+                    Next: add players →
                 </button>
             </div>
             }
             else
             {
+            <!-- Add Players -->
+            <div class="form-group">
+                <label class="form-label" for="bulk-names">Add players</label>
+                <p class="form-hint">One name per line, or separated by commas — add everyone in one go.</p>
+                @* Razor escapes the & in a literal &#10; entity, so build the multi-line placeholder in C# instead *@
+                <textarea id="bulk-names" @bind="bulkPlayerNamesInput" @bind:event="oninput" rows="3" placeholder="@("Alice\nBob\nCharlie")" class="form-control" style="resize: vertical;"></textarea>
+                <button @onclick="AddBulkPlayers" disabled="@string.IsNullOrWhiteSpace(bulkPlayerNamesInput)" class="btn btn-primary btn-block mt-1">
+                    Add names
+                </button>
+            </div>
+
             <!-- Quick Start Players -->
             @if (!showQuickStartPanel)
             {
-                <div class="form-group" style="display:flex; gap:0.5rem; align-items:center;">
-                    <button @onclick="ShowQuickStart" class="btn btn-secondary">Quick start: add player names</button>
+                <div class="form-group">
+                    <button @onclick="ShowQuickStart" class="btn btn-secondary btn-block">🎲 No names? Pick random ones</button>
                 </div>
             }
             else
             {
                 <div class="form-group">
                     <label class="form-label">Suggested names</label>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.5rem; margin-top:0.5rem;">
+                    <div class="name-grid">
                         @foreach (var name in suggestedNamesVisible.Take(playerCount - players.Count))
                         {
-                            <button @onclick="() => AddSuggestedPlayer(name)" class="btn btn-secondary" style="padding: 0.5rem;">
+                            <button @onclick="() => AddSuggestedPlayer(name)" class="btn btn-secondary">
                                 + @name
                             </button>
                         }
                     </div>
-                    <button @onclick="GenerateDifferentNames" class="btn btn-secondary" style="margin-top: 0.5rem; font-size: 0.9rem;">
+                    <button @onclick="GenerateDifferentNames" class="btn btn-secondary btn-sm mt-1">
                         🎲 Generate different names
                     </button>
                 </div>
@@ -219,50 +233,36 @@
             @if (players.Any())
             {
                 <div class="form-group">
-                    <label class="form-label">Players (@players.Count/@playerCount)</label>
+                    <label class="form-label">Players (@players.Count / @playerCount)</label>
                     <div class="player-list">
                         @foreach (var player in players)
                         {
                             <div class="player-chip">
-                                <span class="player-name">
+                                <span class="player-identity">
                                     @if (quickStartAddedPlayerIds.Contains(player.Id))
                                     {
                                         <span class="quick-start-tag" title="Added by Quick Start">🎲</span>
                                     }
-                                    @player.Name
+                                    <span class="player-name">@player.Name</span>
                                 </span>
-                                <button @onclick="() => RemovePlayer(player)" class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">Remove</button>
+                                <button @onclick="() => RemovePlayer(player)" class="btn btn-danger btn-sm" aria-label="Remove @player.Name">Remove</button>
                             </div>
                         }
                     </div>
                 </div>
             }
 
-            <!-- Add Players -->
-            <div class="form-group">
-                <label class="form-label">Add players</label>
-                <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0 0 0.5rem;">
-                    Type one name per line (or separate with commas) to add everyone at once — quicker than tapping "Add" per player on mobile.
-                </p>
-                <textarea @bind="bulkPlayerNamesInput" @bind:event="oninput" rows="3" placeholder="Alice&#10;Bob&#10;Charlie" class="form-control" style="resize: vertical;"></textarea>
-                <button @onclick="AddBulkPlayers" disabled="@string.IsNullOrWhiteSpace(bulkPlayerNamesInput)" class="btn btn-primary" style="margin-top: 0.5rem; width: 100%;">
-                    Add names
-                </button>
-            </div>
-
             <!-- Start Game -->
-            <div style="text-align: center; margin-top: 2rem; display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
-                <button @onclick="BackToSetupStep" class="btn btn-secondary" style="font-size: 1.1rem; padding: 1rem 1.5rem;">
-                    ← Back
-                </button>
-                <button @onclick="StartGame" disabled="@(!CanStartGame())" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;">
+            <div class="action-bar">
+                <button @onclick="BackToSetupStep" class="btn btn-secondary btn-lg btn-back" aria-label="Back to game options">←</button>
+                <button @onclick="StartGame" disabled="@(!CanStartGame())" class="btn btn-primary btn-lg">
                     @if (gameState?.Status == GameStatus.InProgress)
                     {
-                        <span>Starting...</span>
+                        <span>Starting…</span>
                     }
                     else
                     {
-                        <span>Start Undercover Game (@players.Count players)</span>
+                        <span>Start game (@players.Count)</span>
                     }
                 </button>
             </div>
@@ -274,31 +274,28 @@
         <!-- Role Assignment Phase -->
         <div class="card">
             <div class="card-header">
-                <h1>↩️ @((activeRoundPlayers.Count > currentCardIndex) ? activeRoundPlayers[currentCardIndex].Name : "Player")'s Turn</h1>
-                <p style="color: var(--text-muted); text-align: center; margin: 0;">Pass the device to @((activeRoundPlayers.Count > currentCardIndex) ? activeRoundPlayers[currentCardIndex].Name : "Player") to pick their card</p>
+                <p class="eyebrow">Pass the device</p>
+                <h1>@((activeRoundPlayers.Count > currentCardIndex) ? activeRoundPlayers[currentCardIndex].Name : "Player")'s turn</h1>
+                <p class="subtle">Pick a card — make sure nobody else is looking.</p>
             </div>
-            
+
             <!-- Available Cards -->
-            <div style="text-align: center; margin-bottom: 2rem;">
-                <h3 style="color: var(--text-secondary); margin-bottom: 2rem;">Choose Your Card (@availableCards.Count remaining)</h3>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1.5rem; max-width: 600px; margin: 0 auto;">
+            <div class="form-group">
+                <label class="form-label">Choose your card (@availableCards.Count left)</label>
+                <div class="card-grid">
                     @for (int i = 0; i < availableCards.Count; i++)
                     {
                         var cardIndex = i;
                         <button type="button" @onclick="() => PickCard(cardIndex)"
-                             class="game-card"
-                             aria-label="Pick card @(cardIndex + 1)"
-                             style="aspect-ratio: 0.7; background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)); border-radius: 16px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s ease; font-size: 3.5rem; box-shadow: 0 8px 25px rgba(139, 92, 246, 0.3); border: 2px solid rgba(255, 255, 255, 0.1); padding: 0;">
+                                class="game-card"
+                                aria-label="Pick card @(cardIndex + 1)">
                             <span aria-hidden="true">🃏</span>
                         </button>
                     }
                 </div>
             </div>
 
-            <!-- Instructions -->
-            <div style="background: var(--bg-glass); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; text-align: center;">
-                <p style="color: var(--text-muted); margin: 0; font-size: 1.1rem;">Click on any card above to reveal your role and see your secret word</p>
-            </div>
+            <div class="note note-center">Tap a card to see your secret role and word.</div>
         </div>
     }
     else if (gamePhase == GamePhase.RoleRevealed)
@@ -308,12 +305,13 @@
             @if (!hasRevealedRole)
             {
                 <div class="card-header">
-                    <h1>🃏 Card Picked</h1>
-                    <p style="color: var(--text-muted); text-align: center; margin: 0;">Make sure no one else can see your screen, then tap the card below.</p>
+                    <p class="eyebrow">Card picked</p>
+                    <h1>Keep it to yourself</h1>
+                    <p class="subtle">Make sure no one else can see the screen, then tap the card.</p>
                 </div>
                 <button type="button" class="reveal-gate" @onclick="RevealRole">
                     <span class="reveal-icon" aria-hidden="true">🔒</span>
-                    <span>Tap to reveal your role</span>
+                    <span>Tap to reveal your role or word</span>
                 </button>
             }
             else
@@ -321,55 +319,52 @@
                 <div class="card-header">
                     @if (currentPlayerRole == GameConstants.PlayerRoles.MrWhite)
                     {
-                        <h1 style="display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                            <img src="Mrwhite-icon.png" alt="Mr. White" style="width: 2rem; height: 2rem; object-fit: contain;" />
-                            <span>You are Mr. White!</span>
-                        </h1>
+                        <p class="eyebrow">Your role</p>
+                        <h1>You are Mr. White</h1>
                     }
                     else
                     {
-                        <h1>🔍 Your Word</h1>
+                        <p class="eyebrow">Your secret</p>
+                        <h1>🔍 Remember this word</h1>
                     }
                 </div>
 
                 <!-- Word Display -->
-                <div style="text-align: center; margin-bottom: 3rem;">
-                    @if (currentPlayerRole != null)
+                @if (currentPlayerRole != null)
+                {
+                    @if (currentPlayerRole == GameConstants.PlayerRoles.Civilian)
                     {
-                        @if (currentPlayerRole == GameConstants.PlayerRoles.Civilian)
-                        {
-                            <div class="word-display">
-                                <div class="word-category">Your Word</div>
-                                <div class="word-text">@currentGameWordPair?.Civilian</div>
-                            </div>
-                        }
-                        else if (currentPlayerRole == GameConstants.PlayerRoles.Undercover)
-                        {
-                            <div class="word-display">
-                                <div class="word-category">Your Word</div>
-                                <div class="word-text">@currentGameWordPair?.Undercover</div>
-                            </div>
-                        }
-                        else if (currentPlayerRole == GameConstants.PlayerRoles.MrWhite)
-                        {
-                            <div class="word-display">
-                                <div class="word-category">You are Mr. White!</div>
-                                <div class="word-text">Try to blend in.</div>
-                            </div>
-                        }
+                        <div class="word-display">
+                            <div class="word-category">Your word</div>
+                            <div class="word-text">@currentGameWordPair?.Civilian</div>
+                        </div>
                     }
-                </div>
+                    else if (currentPlayerRole == GameConstants.PlayerRoles.Undercover)
+                    {
+                        <div class="word-display">
+                            <div class="word-category">Your word</div>
+                            <div class="word-text">@currentGameWordPair?.Undercover</div>
+                        </div>
+                    }
+                    else if (currentPlayerRole == GameConstants.PlayerRoles.MrWhite)
+                    {
+                        <div class="word-display is-mrwhite">
+                            <div class="word-category">No word for you</div>
+                            <div class="word-text">Blend in.</div>
+                        </div>
+                    }
+                }
 
                 <!-- Continue Button -->
-                <div style="text-align: center;">
-                    <button @onclick="ContinueToNextPlayer" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;">
+                <div class="action-bar">
+                    <button @onclick="ContinueToNextPlayer" class="btn btn-primary btn-lg">
                         @if (currentCardIndex < (activeRoundPlayers.Count - 1))
                         {
-                            <span>Continue to Next Player</span>
+                            <span>Pass to next player →</span>
                         }
                         else
                         {
-                            <span>Start Word Sharing</span>
+                            <span>Start word sharing →</span>
                         }
                     </button>
                 </div>
@@ -381,42 +376,44 @@
         <!-- Word Sharing Phase -->
         <div class="card">
             <div class="card-header">
-                <h1>🔄 Word Sharing Phase</h1>
-                <p style="color: var(--text-muted); text-align: center; margin: 0;">Each player says a word related to their card. Follow the order below!</p>
+                <p class="eyebrow">Round in play</p>
+                <h1>🔄 Word sharing</h1>
+                <p class="subtle">Each player says one word linked to their card, in the order below.</p>
             </div>
 
-            <div class="status-pill">👥 @(players.Count(p => p.IsActive)) of @(players.Count) players remaining</div>
+            <div class="status-pill">👥 @(players.Count(p => p.IsActive)) of @(players.Count) players left</div>
 
             @if (discussionSecondsLeft.HasValue)
             {
                 <div class="timer">
                     <div>
                         <div class="timer-value">@FormatTime(discussionSecondsLeft.Value)</div>
-                        <div class="timer-label">Suggested discussion time — take longer if you need it</div>
+                        <div class="timer-label">Suggested time — take longer if you need it</div>
                     </div>
                 </div>
             }
 
             <!-- Players List in Speaking Order (fixed once when this phase starts, so it can't silently reshuffle) -->
             <div class="form-group">
-                <label class="form-label">Speaking Order</label>
+                <label class="form-label">Speaking order</label>
                 <div class="player-list">
                     @for (int i = 0; i < speakingOrder.Count; i++)
                     {
                         var index = i;
                         <div class="player-chip">
-                            <span class="player-name">@((index + 1)). @speakingOrder[index].Name</span>
+                            <span class="player-identity">
+                                <span class="player-order">@(index + 1)</span>
+                                <span class="player-name">@speakingOrder[index].Name</span>
+                            </span>
                         </div>
                     }
                 </div>
             </div>
 
-            <!-- Instructions moved to separate HowToPlay page -->
-
             <!-- Manual Progress -->
-            <div style="text-align: center;">
-                <button @onclick="StartVoting" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;">
-                    Start Voting & Discussion
+            <div class="action-bar">
+                <button @onclick="StartVoting" class="btn btn-primary btn-lg">
+                    Everyone spoke — start voting
                 </button>
             </div>
         </div>
@@ -426,29 +423,30 @@
         <!-- Voting & Discussion Phase -->
         <div class="card">
             <div class="card-header">
-                <h1>🗳️ Voting & Discussion</h1>
-                <p style="color: var(--text-muted); text-align: center; margin: 0;">Discuss as a group who you think is the Undercover agent or Mr. White, then have one person tap the table's choice below.</p>
+                <p class="eyebrow">Decide together</p>
+                <h1>🗳️ Voting</h1>
+                <p class="subtle">Discuss who the Undercover or Mr. White is, then tap the group's choice.</p>
             </div>
 
-            <div class="status-pill">👥 @(players.Count(p => p.IsActive)) of @(players.Count) players remaining</div>
+            <div class="status-pill">👥 @(players.Count(p => p.IsActive)) of @(players.Count) players left</div>
 
             <!-- Vote Cards -->
             <div class="vote-grid">
                 @foreach (var player in players.Where(p => p.IsActive))
                 {
                     <button type="button" class="vote-card @(selectedVoteTarget == player.Id ? "selected" : "")"
-                         aria-pressed="@(selectedVoteTarget == player.Id)"
-                         @onclick="() => SelectVoteTarget(player.Id)">
-                        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem;">@player.Name</div>
-                        <div style="font-size: 0.9rem; color: var(--text-muted);">Tap to select</div>
+                            aria-pressed="@(selectedVoteTarget == player.Id)"
+                            @onclick="() => SelectVoteTarget(player.Id)">
+                        <div class="vote-name">@player.Name</div>
+                        <div class="vote-hint">@(selectedVoteTarget == player.Id ? "✓ Selected" : "Tap to select")</div>
                     </button>
                 }
             </div>
 
             <!-- Submit Vote -->
-            <div style="text-align: center;">
-                <button @onclick="SubmitVote" disabled="@(selectedVoteTarget == null)" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;">
-                    Submit Vote
+            <div class="action-bar">
+                <button @onclick="SubmitVote" disabled="@(selectedVoteTarget == null)" class="btn btn-primary btn-lg">
+                    Vote out
                 </button>
             </div>
         </div>
@@ -458,33 +456,28 @@
         <!-- Mr. White Guess Phase -->
         <div class="card">
             <div class="card-header">
-                <h1>❓ Mr. White's Last Chance</h1>
-                <p style="color: var(--text-muted); text-align: center; margin: 0;">@votedOutMrWhite?.Name has been voted out! Can you guess the civilian word?</p>
+                <p class="eyebrow">Last chance</p>
+                <h1>❓ Mr. White's guess</h1>
+                <p class="subtle">@votedOutMrWhite?.Name was voted out — but can they name the civilian word?</p>
             </div>
 
-            <div class="status-pill">👥 @(players.Count(p => p.IsActive)) of @(players.Count) players remaining</div>
+            <div class="status-pill">👥 @(players.Count(p => p.IsActive)) of @(players.Count) players left</div>
 
-            <!-- Mr. White Info -->
-            <div class="phase-indicator">
-                <div class="phase-title">Final Challenge</div>
-                <div class="phase-description">If you guess correctly, you win and get 3 points.</div>
+            <div class="note note-center accent">
+                <strong>Pass the device to @votedOutMrWhite?.Name.</strong><br />
+                Guess right and you win the round outright — worth 3 points.
             </div>
 
             <!-- Guess Input -->
-            <div class="form-group">
-                <label class="form-label">What is the civilian word?</label>
-                <div style="display: flex; gap: 0.5rem;">
-                    <input @bind="mrWhiteGuess" @onkeypress="OnMrWhiteGuessKeyPress" placeholder="Enter your guess..." class="form-control" style="flex: 1;" />
-                    <button @onclick="SubmitMrWhiteGuess" disabled="@string.IsNullOrWhiteSpace(mrWhiteGuess)" class="btn btn-primary">Submit Guess</button>
-                </div>
+            <div class="form-group mt-1">
+                <label class="form-label" for="mrwhite-guess">What is the civilian word?</label>
+                <input id="mrwhite-guess" @bind="mrWhiteGuess" @onkeypress="OnMrWhiteGuessKeyPress" placeholder="Type your guess…" class="form-control" autocomplete="off" />
             </div>
 
-            <!-- Instructions -->
-            <div style="background: var(--bg-glass); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem;">
-                <p style="color: var(--text-muted); margin: 0; text-align: center;">
-                    <strong>Pass the device to @votedOutMrWhite?.Name</strong><br />
-                    Type the word you think the civilians had. If correct, you win the entire round!
-                </p>
+            <div class="action-bar">
+                <button @onclick="SubmitMrWhiteGuess" disabled="@string.IsNullOrWhiteSpace(mrWhiteGuess)" class="btn btn-primary btn-lg">
+                    Submit guess
+                </button>
             </div>
         </div>
     }
@@ -493,36 +486,31 @@
         <!-- Mr. White Eliminated Phase -->
         <div class="card">
             <div class="card-header">
-                <h1>❌ Mr. White Eliminated</h1>
-                <p style="color: var(--text-muted); text-align: center; margin: 0;">@votedOutMrWhite?.Name guessed incorrectly and has been eliminated!</p>
+                <p class="eyebrow">Wrong guess</p>
+                <h1>❌ Mr. White is out</h1>
             </div>
 
-            <div class="status-pill">👥 @(players.Count(p => p.IsActive)) of @(players.Count) players remaining</div>
+            <div class="status-pill">👥 @(players.Count(p => p.IsActive)) of @(players.Count) players left</div>
 
             <!-- Elimination Info -->
-            <div style="text-align: center; margin-bottom: 2rem;">
-                <div style="font-size: 3rem; margin-bottom: 1rem;">💀</div>
-                <h2 style="color: var(--danger); margin-bottom: 1rem;">Wrong Guess!</h2>
-                <div style="background: var(--bg-glass); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
-                    <p style="color: var(--text-muted); margin: 0; font-size: 1.1rem;">
-                        <strong>@votedOutMrWhite?.Name</strong> guessed: "<strong>@mrWhiteGuess</strong>"<br />
-                    </p>
-                </div>
-                <p style="color: var(--text-muted);">@votedOutMrWhite?.Name is eliminated from this round.</p>
+            <div class="outcome">
+                <span class="outcome-emoji" aria-hidden="true">💀</span>
+                <div class="outcome-title lose">Not the word!</div>
+                <p class="outcome-sub"><strong>@votedOutMrWhite?.Name</strong> guessed “@mrWhiteGuess” and is eliminated for this round.</p>
             </div>
 
             <!-- Continue Button -->
-            <div style="text-align: center;">
+            <div class="action-bar">
                 @if (players.Count <= 2)
                 {
-                    <button @onclick="() => gamePhase = GamePhase.Results" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;">
-                        View Final Results
+                    <button @onclick="() => gamePhase = GamePhase.Results" class="btn btn-primary btn-lg">
+                        View final results
                     </button>
                 }
                 else
                 {
-                    <button @onclick="StartNewWordRound" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;">
-                        Continue New Word Round
+                    <button @onclick="StartNewWordRound" class="btn btn-primary btn-lg">
+                        Continue with a new word
                     </button>
                 }
             </div>
@@ -533,42 +521,38 @@
         <!-- Generic Player Eliminated Reveal Phase -->
         <div class="card">
             <div class="card-header">
-                <h1>❌ Player Eliminated</h1>
-                <p style="color: var(--text-muted); text-align: center; margin: 0;">@eliminatedPlayer?.Name was voted out. Their role is revealed below.</p>
+                <p class="eyebrow">Voted out</p>
+                <h1>❌ @eliminatedPlayer?.Name is out</h1>
             </div>
 
-            <div class="status-pill">👥 @(players.Count(p => p.IsActive)) of @(players.Count) players remaining</div>
+            <div class="status-pill">👥 @(players.Count(p => p.IsActive)) of @(players.Count) players left</div>
 
-            <div style="text-align: center; margin-bottom: 2rem;">
-                <div style="margin-bottom: 1rem;">
-                    @if (eliminatedPlayer != null)
+            <div class="outcome">
+                @if (eliminatedPlayer != null)
+                {
+                    @if (eliminatedPlayer.Role == GameConstants.PlayerRoles.Civilian)
                     {
-                        @if (eliminatedPlayer.Role == GameConstants.PlayerRoles.Civilian)
-                        {
-                            <img src="Civilian-icon.png" alt="Civilian" style="width: 5rem; height: 5rem; object-fit: contain;" />
-                        }
-                        else if (eliminatedPlayer.Role == GameConstants.PlayerRoles.Undercover)
-                        {
-                            <img src="Undercover-icon.png" alt="Undercover" style="width: 5rem; height: 5rem; object-fit: contain;" />
-                        }
-                        else if (eliminatedPlayer.Role == GameConstants.PlayerRoles.MrWhite)
-                        {
-                            <img src="Mrwhite-icon.png" alt="Mr. White" style="width: 5rem; height: 5rem; object-fit: contain;" />
-                        }
-                        else
-                        {
-                            <span style="font-size: 3rem;">🃏</span>
-                        }
+                        <img src="Civilian-icon.png" alt="Civilian" class="outcome-icon" />
                     }
-                </div>
-                <h2 style="color: var(--accent-primary); margin-bottom: 0.5rem;">@GetRoleDisplayName(eliminatedPlayer?.Role ?? "")</h2>
-                <div style="background: var(--bg-glass); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-top: 1rem;">
-                    <p style="color: var(--text-muted); margin: 0;">They are out for the rest of this game.</p>
-                </div>
+                    else if (eliminatedPlayer.Role == GameConstants.PlayerRoles.Undercover)
+                    {
+                        <img src="Undercover-icon.png" alt="Undercover" class="outcome-icon" />
+                    }
+                    else if (eliminatedPlayer.Role == GameConstants.PlayerRoles.MrWhite)
+                    {
+                        <img src="Mrwhite-icon.png" alt="Mr. White" class="outcome-icon" />
+                    }
+                    else
+                    {
+                        <span class="outcome-emoji" aria-hidden="true">🃏</span>
+                    }
+                }
+                <div class="outcome-title win">@GetRoleDisplayName(eliminatedPlayer?.Role ?? "")</div>
+                <p class="outcome-sub">They're out for the rest of this game.</p>
             </div>
 
-            <div style="text-align: center;">
-                <button @onclick="ContinueAfterPlayerElimination" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;">Continue</button>
+            <div class="action-bar">
+                <button @onclick="ContinueAfterPlayerElimination" class="btn btn-primary btn-lg">Continue</button>
             </div>
         </div>
     }
@@ -577,112 +561,108 @@
         <!-- Results Phase -->
         <div class="card">
             <div class="card-header">
-                <h1>🏆 Game Results</h1>
+                <p class="eyebrow">Round over</p>
+                <h1>🏆 Results</h1>
             </div>
-            
+
             <!-- Winner Display -->
             @if (gameResult != null)
             {
-                <div style="text-align: center; margin-bottom: 2rem;">
-                    <div style="margin-bottom: 1rem;">
-                        @if (gameResult.Winner == "Civilians")
-                        {
-                            <img src="Civilian-icon.png" alt="Civilians Win" style="width: 5rem; height: 5rem; object-fit: contain;" />
-                        }
-                        else if (gameResult.Winner == "Undercover")
-                        {
-                            <img src="Undercover-icon.png" alt="Undercover Wins" style="width: 5rem; height: 5rem; object-fit: contain;" />
-                        }
-                        else if (gameResult.Winner == "Mr. White")
-                        {
-                            <img src="Mrwhite-icon.png" alt="Mr. White Wins" style="width: 5rem; height: 5rem; object-fit: contain;" />
-                        }
-                        else
-                        {
-                            <span style="font-size: 3rem;">❓</span>
-                        }
-                    </div>
-                    <h2 style="color: var(--accent-primary); margin-bottom: 0.5rem;">@gameResult.Winner Wins!</h2>
-                    <p style="color: var(--text-muted);">@gameResult.Reason</p>
-                </div>
-
-                <!-- Player Roles Revealed -->
-                <div class="form-group">
-                    <label class="form-label">Player Roles & Scores</label>
-                    <div class="player-list">
-                        @foreach (var player in players.OrderByDescending(p => p.Score))
-                        {
-                            <div class="player-chip">
-                                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                    @if (player.Role == GameConstants.PlayerRoles.Civilian)
-                                    {
-                                        <img src="Civilian-icon.png" alt="Civilian" style="width: 2rem; height: 2rem; object-fit: contain;" />
-                                    }
-                                    else if (player.Role == GameConstants.PlayerRoles.Undercover)
-                                    {
-                                        <img src="Undercover-icon.png" alt="Undercover" style="width: 2rem; height: 2rem; object-fit: contain;" />
-                                    }
-                                    else if (player.Role == GameConstants.PlayerRoles.MrWhite)
-                                    {
-                                        <img src="Mrwhite-icon.png" alt="Mr. White" style="width: 2rem; height: 2rem; object-fit: contain;" />
-                                    }
-                                    <span class="player-name">@player.Name</span>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                    <span class="role-badge role-@player.Role.ToLower()">
-                                        @GetRoleDisplayName(player.Role)
-                                    </span>
-                                    <span class="score-badge">@player.Score pts</span>
-                                </div>
-                            </div>
-                        }
-                    </div>
+                <div class="outcome">
+                    @if (gameResult.Winner == "Civilians")
+                    {
+                        <img src="Civilian-icon.png" alt="Civilians win" class="outcome-icon" />
+                    }
+                    else if (gameResult.Winner == "Undercover")
+                    {
+                        <img src="Undercover-icon.png" alt="Undercover wins" class="outcome-icon" />
+                    }
+                    else if (gameResult.Winner == "Mr. White")
+                    {
+                        <img src="Mrwhite-icon.png" alt="Mr. White wins" class="outcome-icon" />
+                    }
+                    else
+                    {
+                        <span class="outcome-emoji" aria-hidden="true">❓</span>
+                    }
+                    <div class="outcome-title win">@gameResult.Winner Wins!</div>
+                    <p class="outcome-sub">@gameResult.Reason</p>
                 </div>
 
                 <!-- Word Reveal -->
                 @if (currentGameWordPair != null)
                 {
                     <div class="phase-indicator">
-                        <div class="phase-title">The Words Were</div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
-                            <div style="text-align: center;">
-                                <div style="font-weight: 600; color: var(--accent-primary);">Civilian Word</div>
-                                <div style="font-size: 1.2rem; color: var(--text-primary);">@currentGameWordPair.Civilian</div>
+                        <div class="phase-title">The words were</div>
+                        <div class="word-pair-grid">
+                            <div class="word-pair-cell">
+                                <div class="word-pair-label civilian">Civilian</div>
+                                <div class="word-pair-value">@currentGameWordPair.Civilian</div>
                             </div>
-                            <div style="text-align: center;">
-                                <div style="font-weight: 600; color: var(--danger);">Undercover Word</div>
-                                <div style="font-size: 1.2rem; color: var(--text-primary);">@currentGameWordPair.Undercover</div>
+                            <div class="word-pair-cell">
+                                <div class="word-pair-label undercover">Undercover</div>
+                                <div class="word-pair-value">@currentGameWordPair.Undercover</div>
                             </div>
                         </div>
                     </div>
                 }
+
+                <!-- Player Roles Revealed -->
+                <div class="form-group">
+                    <label class="form-label">Roles &amp; scores</label>
+                    <div class="player-list">
+                        @foreach (var player in players.OrderByDescending(p => p.Score))
+                        {
+                            <div class="player-chip">
+                                <span class="player-identity">
+                                    @if (player.Role == GameConstants.PlayerRoles.Civilian)
+                                    {
+                                        <img src="Civilian-icon.png" alt="" />
+                                    }
+                                    else if (player.Role == GameConstants.PlayerRoles.Undercover)
+                                    {
+                                        <img src="Undercover-icon.png" alt="" />
+                                    }
+                                    else if (player.Role == GameConstants.PlayerRoles.MrWhite)
+                                    {
+                                        <img src="Mrwhite-icon.png" alt="" />
+                                    }
+                                    <span class="player-name">@player.Name</span>
+                                </span>
+                                <span class="player-meta">
+                                    <span class="role-badge role-@player.Role.ToLower()">
+                                        @GetRoleDisplayName(player.Role)
+                                    </span>
+                                    <span class="score-badge">@player.Score pts</span>
+                                </span>
+                            </div>
+                        }
+                    </div>
+                </div>
             }
 
             <!-- Game Actions -->
-            <div style="text-align: center; margin-top: 2rem;">
-                <div style="display: flex; gap: 1rem; justify-content: center, flex-wrap: wrap;">
-                    <button @onclick="NextRound" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;">
-                        🎲 Next Round
-                    </button>
-                    <button @onclick="ConfirmResetGame" class="btn btn-secondary" style="font-size: 1.1rem; padding: 1rem 2rem;">
-                        🔄 New Game
-                    </button>
-                </div>
-                <p style="margin-top: 0.5rem; color: var(--text-muted); font-size: 0.9rem;">
-                    Next Round keeps the same players • New Game starts fresh
-                </p>
+            <p class="action-note">Next round keeps the players and scores • New game starts fresh</p>
+            <div class="action-bar">
+                <button @onclick="ConfirmResetGame" class="btn btn-secondary btn-lg">
+                    🔄 New game
+                </button>
+                <button @onclick="NextRound" class="btn btn-primary btn-lg">
+                    🎲 Next round
+                </button>
             </div>
         </div>
     }
+
     <!-- Small links: how-to and feedback -->
-    <div style="text-align:center; margin-top:0.5rem; display:flex; flex-direction:column; gap:0.25rem; align-items:center;">
-    <a href="how-to-play" style="font-size:0.8rem; color:var(--accent-primary); text-decoration:none;">How to play</a>
-        <a href="https://github.com/ArdonToonstra/undercover-game/issues" target="_blank" rel="noopener noreferrer" style="font-size:0.8rem; color:var(--text-muted); opacity:0.85; text-decoration:none; border-bottom:1px dotted rgba(0,0,0,0.12);">
-            Feedback / Report an issue
+    <div class="footer-links">
+        <a href="how-to-play">How to play</a>
+        <a href="https://github.com/ArdonToonstra/undercover-game/issues" target="_blank" rel="noopener noreferrer">
+            Feedback / report an issue
         </a>
         @if (!string.IsNullOrWhiteSpace(publishedVersion))
         {
-            <div style="font-size:0.7rem; color:var(--text-muted); margin-top:0.25rem;">Version: @publishedVersion</div>
+            <div class="footer-version">Version @publishedVersion</div>
         }
     </div>
 </div>
