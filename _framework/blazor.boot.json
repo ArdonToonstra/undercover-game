@@ -1,7 +1,7 @@
 {
   "mainAssemblyName": "undercover-client",
   "resources": {
-    "hash": "sha256-6ZswrFbxajrRLJO2WAgJnU59uoI0KXmrixPswDfd3bU=",
+    "hash": "sha256-96gsx/d8kabTgPKiUK1NvDiJkf/pJDwUbJVCpubZ1+Y=",
     "jsModuleNative": {
       "dotnet.native.js": "sha256-dexsp+9ih2C28zVhNnPXUbkz2QCq7lHpkyDcmaLl7NQ="
     },
@@ -59,7 +59,7 @@
       "System.Threading.wasm": "sha256-ip7e9wGPqhK+rFq0NOlQiUNntT6Cf9XQdoM38XVOSLU=",
       "System.wasm": "sha256-0h/E837RjMJjMLndiTv3gCaXstmfreX9Ui/wJVYpzwg=",
       "System.Private.CoreLib.wasm": "sha256-Wo/6lSr8vD5mxJZgkNZ4gg+15ix4bBEleodOFx25FO8=",
-      "undercover-client.wasm": "sha256-fLi2y0d+cg+Kb356p3iW373vvIxHcVsG3KXkGjCTfZc="
+      "undercover-client.wasm": "sha256-UxluuzeNVhwjoER25w7zyzvDYVPRr0yY8b4InZFc58c="
     }
   },
   "cacheBootResources": true,
