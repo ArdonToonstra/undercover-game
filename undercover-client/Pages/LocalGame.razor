@@ -514,6 +514,18 @@
                     </button>
                 }
             </div>
+
+            <!-- Host override: the typed guess didn't match exactly (typo, accent, plural, etc.)
+                 but the group agrees it was actually correct - let the host award the win manually
+                 instead of forcing a re-vote. -->
+            <div class="note note-center mt-1">
+                Was “@mrWhiteGuess” actually correct? (typo, spelling, etc.)
+            </div>
+            <div class="action-bar">
+                <button @onclick="OverrideMrWhiteCorrectGuess" class="btn btn-outline-secondary btn-sm">
+                    ✅ Host override: count it as correct
+                </button>
+            </div>
         </div>
     }
     else if (gamePhase == GamePhase.PlayerEliminated)
@@ -641,13 +653,79 @@
                 </div>
             }
 
+            <!-- Roles for next round: lets the host rebalance (e.g. add an Undercover) without
+                 restarting the game and losing players/scores. Reuses the same
+                 useCustomRoles/customUndercoverCount/customMrWhiteCount state that
+                 SetupRoleAssignment reads when NextRound() runs. -->
+            <div class="form-group">
+                <div class="center">
+                    <button @onclick="ToggleCustomRoles" class="btn btn-outline-secondary btn-sm @(useCustomRoles ? "is-on" : "")">
+                        @(useCustomRoles ? "✓ Custom roles for next round — tap for default" : "⚙️ Change role distribution for next round")
+                    </button>
+                </div>
+
+                @if (useCustomRoles)
+                {
+                    <div class="role-grid mt-1">
+                        <div class="role-tile">
+                            <div class="role-tile-icon">
+                                <img src="Civilian-icon.png" alt="" />
+                                <div class="role-count civilian">@GetCurrentCivilianCount()</div>
+                            </div>
+                            <div class="role-tile-name">Civilians</div>
+                        </div>
+                        <div class="role-tile">
+                            <div class="role-tile-icon">
+                                <img src="Undercover-icon.png" alt="" />
+                                <div class="role-count undercover">@GetCurrentUndercoverCount()</div>
+                            </div>
+                            <div class="role-tile-name">Undercover</div>
+                        </div>
+                        <div class="role-tile">
+                            <div class="role-tile-icon">
+                                <img src="Mrwhite-icon.png" alt="" />
+                                <div class="role-count mrwhite">@GetCurrentMrWhiteCount()</div>
+                            </div>
+                            <div class="role-tile-name">Mr. White</div>
+                        </div>
+                    </div>
+
+                    <div class="stepper-panel">
+                        <div class="stepper-grid">
+                            <div class="stepper">
+                                <label class="form-label">Undercover</label>
+                                <div class="stepper-controls">
+                                    <button type="button" @onclick="DecrementUndercoverCount" disabled="@(customUndercoverCount <= 0)" class="btn btn-secondary btn-step" aria-label="Fewer undercover agents">−</button>
+                                    <span class="stepper-value">@customUndercoverCount</span>
+                                    <button type="button" @onclick="IncrementUndercoverCount" disabled="@(customUndercoverCount >= GetMaxUndercoverCount())" class="btn btn-secondary btn-step" aria-label="More undercover agents">+</button>
+                                </div>
+                            </div>
+                            <div class="stepper">
+                                <label class="form-label">Mr. White</label>
+                                <div class="stepper-controls">
+                                    <button type="button" @onclick="DecrementMrWhiteCount" disabled="@(customMrWhiteCount <= 0)" class="btn btn-secondary btn-step" aria-label="Fewer Mr. White">−</button>
+                                    <span class="stepper-value">@customMrWhiteCount</span>
+                                    <button type="button" @onclick="IncrementMrWhiteCount" disabled="@(customMrWhiteCount >= GetMaxMrWhiteCount())" class="btn btn-secondary btn-step" aria-label="More Mr. White">+</button>
+                                </div>
+                            </div>
+                        </div>
+                        @if (!IsRoleDistributionValid())
+                        {
+                            <div class="form-error" role="alert">
+                                ⚠️ Non-civilians can't outnumber half the players (@(playerCount / 2))
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
             <!-- Game Actions -->
             <p class="action-note">Next round keeps the players and scores • New game starts fresh</p>
             <div class="action-bar">
                 <button @onclick="ConfirmResetGame" class="btn btn-secondary btn-lg">
                     🔄 New game
                 </button>
-                <button @onclick="NextRound" class="btn btn-primary btn-lg">
+                <button @onclick="NextRound" disabled="@(!IsRoleDistributionValid())" class="btn btn-primary btn-lg">
                     🎲 Next round
                 </button>
             </div>
@@ -1314,6 +1392,35 @@
             await VibrateAsync(80);
         }
 
+        await InvokeAsync(StateHasChanged);
+    }
+
+    // Host-triggered manual override: used when Mr. White's typed guess didn't match the
+    // civilian word exactly (typo, spelling, accent) but the table agrees it was correct.
+    // Mirrors the correct-guess branch of SubmitMrWhiteGuess without re-checking the string.
+    private async Task OverrideMrWhiteCorrectGuess()
+    {
+        if (votedOutMrWhite == null || currentGameWordPair == null) return;
+
+        var confirmed = await JS.InvokeAsync<bool>("confirm", $"Award the win to {votedOutMrWhite.Name} as Mr. White? This ends the round.");
+        if (!confirmed) return;
+
+        var civilianWord = currentGameWordPair.Civilian;
+        gameResult = new GameResultDTO
+        {
+            Winner = "Mr. White",
+            Reason = $"Mr. White ({votedOutMrWhite.Name}) guessed '{mrWhiteGuess}' — manually confirmed as the civilian word '{civilianWord}'!"
+        };
+
+        votedOutMrWhite.Score += 3;
+        gamePhase = GamePhase.Results;
+
+        if (gameState != null)
+        {
+            gameState.Status = GameStatus.Finished;
+        }
+
+        await VibrateAsync(200);
         await InvokeAsync(StateHasChanged);
     }
 
